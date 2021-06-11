@@ -9,4 +9,10 @@
  2. Conectar las X terminales a mano? (investigar si se puede automático)
  3. Iniciar código en 1 terminal y se propaga al resto (investigar si se puede automático)
 
- 
+ # Prototipo1 - Fran:
+ - Averiguar por que el resultado final queda en una lista (linea 78)
+ - Chequear si anda bien
+ - Chequear por que no fue necesario un identificador único para cada mensaje
+
+ # Make y testing
+ - Averiguar opciones
