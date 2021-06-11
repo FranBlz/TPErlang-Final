@@ -15,4 +15,6 @@
  - Chequear por que no fue necesario un identificador único para cada mensaje
 
  # Make y testing
- - Averiguar opciones
+ - Makefile
+ - Abrir N terminales
+ - Modulo make de Erlang (https://erlang.org/doc/man/make.html)
