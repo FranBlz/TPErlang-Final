@@ -1,4 +1,4 @@
 'node'.
 'conectar'.
 {'conectar',[load]}.
-{'node',[netload]}.
+{'node',[load]}.

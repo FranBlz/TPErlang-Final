@@ -1,8 +1,9 @@
 -module(conectar).
--export([con/0]).
+-export([con/1]).
 
-con() ->
-    net_kernel:connect_node(node1@FranPC),
+con(0) -> done;
+con(N) ->
+    net_kernel:connect_node(list_to_atom(lists:concat([node,N,'@FranPC']))),
+    con(N - 1).
+
     %rpc:call(node1@FranPC, node, start, []),
-    net_kernel:connect_node(node2@FranPC),
-    net_kernel:connect_node(node3@FranPC).

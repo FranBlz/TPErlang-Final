@@ -1,11 +1,14 @@
 -module(node).
 -include("struct.hrl").
--export([start/0, stop/0, send/1, senderFun/0, communicatorFun/2, listenerFun/3, deliverFun/3]).
+-export([start/0, stop/0, send/1, generate/2]).
+-export([senderFun/0, communicatorFun/2, listenerFun/3, deliverFun/2]).
+
+-define(MAX_NODES, 4).
 
 %% send envia definitivo, deliver (escribe y escucha) consenso, listener escuche mensaje
 start() ->
     register(sender, spawn(?MODULE, senderFun,[])),
-    register(deliver, spawn(?MODULE, deliverFun,[0, 0, 0])),
+    register(deliver, spawn(?MODULE, deliverFun,[0, 0])),
     register(listener, spawn(?MODULE, listenerFun,[0, dict:new(), infinity])),
     register(communicator, spawn(?MODULE, communicatorFun,[0, ""])).
 
@@ -48,21 +51,22 @@ maximum(V1, V2) when V1 >= V2 ->
 maximum(_V1, V2) ->
     V2.
 
-deliverFun(Num, Hprop, Nrep) ->
+deliverFun(Hprop, Nrep) ->
     receive
         get_proposal ->
-            lists:foreach(fun(X) -> {deliver, X} ! #prop{sender = self(), sn = Num} end, nodes()),
-            deliverFun(Num + 1, Num, 1);
+            lists:foreach(fun(X) -> {deliver, X} ! #prop{sender = self(), sn = Hprop} end, nodes()),
+            deliverFun(Hprop, 1);
         M when is_record(M, prop) ->
-            M#prop.sender ! #rep{sender = self(), sn = Num},
-            deliverFun(Num, Hprop, Nrep);
+            M#prop.sender ! #rep{sender = self(), sn = Hprop},
+            deliverFun(Hprop, Nrep);
         M when is_record(M, rep) ->
+            Total = length(nodes()),
             if 
-                Nrep + 1 == 2 ->
+                Nrep + 1 == Total ->
                     communicator ! {prop, maximum(M#rep.sn, Hprop)},
-                    deliverFun(Num, Num, 0);
+                    deliverFun(maximum(M#rep.sn, Hprop) + 1, 0);
                 true ->
-                    deliverFun(Num, maximum(M#rep.sn, Hprop), Nrep + 1)
+                    deliverFun(maximum(M#rep.sn, Hprop), Nrep + 1)
             end
     end.
 %% End of deliver section
@@ -71,7 +75,13 @@ deliverFun(Num, Hprop, Nrep) ->
 listenerFun(N, Pend, TO) ->
     receive 
         M when is_record(M, msg) ->
-            listenerFun(N, dict:append(M#msg.sn, {M#msg.body}, Pend), 0)
+            case dict:find(M#msg.sn, Pend) of
+                {ok, _Smth} ->
+                    io:format("PISADO~n"),
+                    listenerFun(N, dict:append(M#msg.sn, {M#msg.body}, Pend), 0);
+                error ->
+                    listenerFun(N, dict:append(M#msg.sn, {M#msg.body}, Pend), 0)
+            end
     after TO ->
         case dict:find(N, Pend) of
                 {ok, [Value|_Tl]} ->
@@ -82,3 +92,9 @@ listenerFun(N, Pend, TO) ->
         end
     end.
 %% End of listener section
+
+generate(_TO, 0) -> finished;
+generate(TO, N) ->
+    timer:sleep(TO),
+    send(TO),
+    generate(round(rand:uniform()*10000), N - 1).
