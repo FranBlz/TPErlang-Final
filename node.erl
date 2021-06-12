@@ -8,8 +8,8 @@
 %% send envia definitivo, deliver (escribe y escucha) consenso, listener escuche mensaje
 start() ->
     register(sender, spawn(?MODULE, senderFun,[])),
-    register(deliver, spawn(?MODULE, deliverFun,[0, 0])),
-    register(listener, spawn(?MODULE, listenerFun,[0, dict:new(), infinity])),
+    register(deliver, spawn(?MODULE, deliverFun,[1, 0])),
+    register(listener, spawn(?MODULE, listenerFun,[1, dict:new(), infinity])),
     register(communicator, spawn(?MODULE, communicatorFun,[0, ""])).
 
 stop() -> 
