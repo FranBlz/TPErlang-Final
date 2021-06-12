@@ -12,7 +12,7 @@
  # Prototipo1 - Fran:
  - Averiguar por que el resultado final queda en una lista (linea 78)
  - Chequear si anda bien
- - Chequear por que no fue necesario un identificador único para cada mensaje
+ - Consultar sobre 2 mensajes al mismo tiempo que obtienen el mismo UniversalStamp
 
  # Make y testing
  - Makefile

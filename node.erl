@@ -3,7 +3,6 @@
 -export([start/0, stop/0, send/1, senderFun/0, communicatorFun/2, listenerFun/3, deliverFun/3]).
 
 %% send envia definitivo, deliver (escribe y escucha) consenso, listener escuche mensaje
-
 start() ->
     register(sender, spawn(?MODULE, senderFun,[])),
     register(deliver, spawn(?MODULE, deliverFun,[0, 0, 0])),
