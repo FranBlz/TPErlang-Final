@@ -20,9 +20,11 @@ se decida una que ya esté ocupada, en dicho caso esta se agrega al diccionario 
 - Posibles soluciones: 
     1. Ignorarlo: depende de la respuesta de la consulta (1).
     2. Implementar jerarquía de nodos y diccionario de listas (requiere refactor importante y es medio parche).
-    3. Buscar alguna solución algoritmica (solución en la negociación de las UStamps, pedir una nueva UStamp si la actual está ocupada, etc).
+    3. Implementar un reenvio de mensajes (donde está el PISADO actualmente reiniciar la votacion de UStamp).
+    4. Implementar algun tipo de mutex para la votación (?)
+    5. Buscar alguna solución algoritmica (solución en la negociación de las UStamps, pedir una nueva UStamp si la actual está ocupada, etc).
 
-- Observaciones: el ratio de perdida parece disminuir al aumentar la relacion entre nodos totales y nodos hablando. El programa parece funcionar bien dejando de lado los mensajes perdidos.
+- Observaciones: el ratio de perdida parece disminuir al aumentar la relacion entre nodos totales y nodos hablando. El programa parece funcionar bien dejando de lado los mensajes perdidos. Sorprendentemente, el orden total no se ve afectado por la perdida e mensajes, no se por que será esto ya que a mi entender llega mas de 1 mensaje con la misma UStamp al diccionario, pero parece que el mensaje pisado siempre es el mismo a través de los nodos...habría que revisarlo.
 
 # Pendiente prototipo 1:
 - Generar protocolo de cierre seguro
