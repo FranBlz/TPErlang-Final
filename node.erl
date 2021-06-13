@@ -77,10 +77,11 @@ listenerFun(N, Pend, TO) ->
         M when is_record(M, msg) ->
             case dict:find(M#msg.sn, Pend) of
                 {ok, _Smth} ->
-                    io:format("PISADO~n"),
-                    listenerFun(N, dict:append(M#msg.sn, {M#msg.body}, Pend), 0);
+                    %io:format("PISADO~n"),
+                    %io:format("Deliver : ~p ~p ~n", [Value, N]),
+                    listenerFun(N, dict:append(M#msg.sn, M#msg.body, Pend), 0);
                 error ->
-                    listenerFun(N, dict:append(M#msg.sn, {M#msg.body}, Pend), 0)
+                    listenerFun(N, dict:append(M#msg.sn, M#msg.body, Pend), 0)
             end
     after TO ->
         case dict:find(N, Pend) of
