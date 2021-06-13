@@ -9,6 +9,7 @@
 6. ejecutar node:send(Msg). para hacer broadcast de un único mensaje
 7. ejecutar node:generate(Mili, N) para hacer N broadcasts cada un tiempo aleatorio (el tiempo empieza con Mili(milisegundos) para poder poner un tiempo que permita ejecutar el comando en todas las terminales deseadas)
 8. si se usó make results, cerrar las terminales una a una con q().
+9. ACLARACION: la funcion make results es horrible, preguntame si la queres usar
 
 ## Problemas prototipo 1:
 - El resultado final mediante send queda en una lista (linea 78, confirmo que esto es cuestion de los diccionarios, en el resto de funciones el dato no esta en una lista, habría que ver si en el ejemplo de Ceresa también pasaba y no nos dimos cuenta)
@@ -34,8 +35,10 @@ se decida una que ya esté ocupada, en dicho caso esta se agrega al diccionario 
 ## Algunos resultados de tests:
 - 20 nodos total, 8 nodos hablantes, 20 msgs c/u, 19 perdidos (11,875%)
 - 20 nodos total, 8 nodos hablantes, 20 msgs c/u, 18 perdidos (11,25%)
+- 20 nodos total, 8 nodos hablantes, 20 msgs c/u, 16 perdidos (10%)
 - 20 nodos total, 2 nodos hablantes, 30 msgs c/u, 5 perdidos (8,33%)
 - 20 nodos total, 10 nodos hablantes, 3 msgs c/u, 3 perdidos (10%)
+- 5 nodos total, 5 nodos hablantes, 30 msgs c/u, 25 perdidos (16,67%)
 
 ## Pendiente prototipo 1:
 - Generar protocolo de cierre seguro
