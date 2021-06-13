@@ -58,7 +58,7 @@ deliverFun(Hprop, Nrep) ->
             deliverFun(Hprop, 1);
         M when is_record(M, prop) ->
             M#prop.sender ! #rep{sender = self(), sn = Hprop},
-            deliverFun(Hprop, Nrep);
+            deliverFun(maximum(M#prop.sn, Hprop) + 1, Nrep);
         M when is_record(M, rep) ->
             Total = length(nodes()),
             if 

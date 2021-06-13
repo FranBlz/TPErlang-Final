@@ -17,8 +17,8 @@
 - Consultar sobre 2 mensajes al mismo tiempo que obtienen el mismo UniversalStamp
 - Consultar sobre perdida de mensajes pero no de atomicidad y orden total (1)
 
-- Problema actual: durante la negociacion de la UniversalStamp de un mensaje puede suceder que
-se decida una que ya esté ocupada, en dicho caso esta se agrega al diccionario pisando la anterior.
+- ~~Problema actual: durante la negociacion de la UniversalStamp de un mensaje puede suceder que
+se decida una que ya esté ocupada, en dicho caso esta se agrega al diccionario pisando la anterior.~~
 - Posibles soluciones: 
     1. Ignorar la perdida de mensajes: depende de la respuesta de la consulta (1).
     2. Imprimirlo sin esperar (sacado de bibliografía, habría que saber si en realidad esto es un problema recurrente del algoritmo o no, porque si lo es no estaría mal esta solución, pero si es un problema de nuestra implementación no me parece del todo correcta)
@@ -29,8 +29,8 @@ se decida una que ya esté ocupada, en dicho caso esta se agrega al diccionario 
     7. Descongestionar los nodos internamente (?)
     8. Buscar alguna solución algoritmica.
 
-- Observaciones: el ratio de perdida parece disminuir al aumentar la relacion entre nodos totales y nodos hablando. El programa parece funcionar bien dejando de lado los mensajes perdidos. Sorprendentemente, el orden total no se ve afectado por la perdida e mensajes, no se por que será esto ya que a mi entender llega mas de 1 mensaje con la misma UStamp al diccionario, pero parece que el mensaje pisado siempre es el mismo a través de los nodos...habría que revisarlo.
-- <mark>IMPORTANTE:</mark> habría que consultar lo que hablamos la otra vez sobre estos mensajes que se enumeran igual, por lo que leí es algo que puede pasar (mirar fondo del README), pero valdría la pena consultarlo antes de implementar soluciones al problema.
+- ~~Observaciones: el ratio de perdida parece disminuir al aumentar la relacion entre nodos totales y nodos hablando. El programa parece funcionar bien dejando de lado los mensajes perdidos. Sorprendentemente, el orden total no se ve afectado por la perdida e mensajes, no se por que será esto ya que a mi entender llega mas de 1 mensaje con la misma UStamp al diccionario, pero parece que el mensaje pisado siempre es el mismo a través de los nodos...habría que revisarlo.~~
+- ~~<mark>IMPORTANTE:</mark> habría que consultar lo que hablamos la otra vez sobre estos mensajes que se enumeran igual, por lo que leí es algo que puede pasar (mirar fondo del README), pero valdría la pena consultarlo antes de implementar soluciones al problema.~~
 
 ## Algunos resultados de tests:
 - 20 nodos total, 8 nodos hablantes, 20 msgs c/u, 19 perdidos (11,875%)
