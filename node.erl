@@ -8,7 +8,7 @@
 %% send envia definitivo, deliver (escribe y escucha) consenso, listener escuche mensaje
 start() ->
     register(sender, spawn(?MODULE, senderFun,[])),
-    register(deliver, spawn(?MODULE, deliverFun,[1, 0])),
+    register(deliver, spawn(?MODULE, deliverFun,[0, 0])),
     register(listener, spawn(?MODULE, listenerFun,[1, dict:new(), infinity])),
     register(communicator, spawn(?MODULE, communicatorFun,[0, ""])).
 
@@ -57,14 +57,14 @@ deliverFun(Hprop, Nrep) ->
             lists:foreach(fun(X) -> {deliver, X} ! #prop{sender = self(), sn = Hprop} end, nodes()),
             deliverFun(Hprop, 1);
         M when is_record(M, prop) ->
-            M#prop.sender ! #rep{sender = self(), sn = Hprop},
+            M#prop.sender ! #rep{sender = self(), sn = maximum(M#prop.sn, Hprop) + 1},
             deliverFun(maximum(M#prop.sn, Hprop) + 1, Nrep);
         M when is_record(M, rep) ->
             Total = length(nodes()),
             if 
                 Nrep + 1 == Total ->
                     communicator ! {prop, maximum(M#rep.sn, Hprop)},
-                    deliverFun(maximum(M#rep.sn, Hprop) + 1, 0);
+                    deliverFun(maximum(M#rep.sn, Hprop), 0);
                 true ->
                     deliverFun(maximum(M#rep.sn, Hprop), Nrep + 1)
             end
