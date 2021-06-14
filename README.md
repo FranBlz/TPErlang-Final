@@ -17,10 +17,11 @@
 - Realizar mas testing
 
 ## Consultas:
-- Que significa que un nodo pueda fallar pero no ser erroneo
-- Nuestra implementación difiere ligeramente del algoritmo ISIS (ISIS envia el mensaje, negocia la estampa, guarda el mensaje provisional, envia la estampa universal, actualiza el mensaje. Nuestro algoritmo envia peticion de negociar, negocia la estampa, envia el mensaje junto con la estampa final)
-- Consultar cómo usar el servicio como una "entidad unica"
-- Consultar cómo usar la salida del servicio para el Ledger
+- La conexión de los nodos debe ser parte del programa?
+- Que significa que un nodo pueda fallar pero no ser erroneo.
+- Nuestra implementación difiere ligeramente del algoritmo ISIS (ISIS envia el mensaje, negocia la estampa, guarda el mensaje provisional, envia la estampa universal, actualiza el mensaje. Nuestro algoritmo envia peticion de negociar, negocia la estampa, envia el mensaje junto con la estampa final).
+- Cómo usar el servicio como una "entidad unica".
+- Cómo usar la salida del servicio para el Ledger.
 
 ## Make y testing
 - Makefile
