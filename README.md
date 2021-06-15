@@ -13,16 +13,16 @@
 
 ## Pendiente prototipo 1:
 - Mayor problema actual: si un nodo cae luego de pedir un consenso pero antes de enviar el mensaje con el resultado final entonces el resto de nodos no usarán la UStamp que hayan acordado pero tampoco tendrán el mensaje de dicha estampa, por lo que quedarán esperando un mensaje que nunca llegará.
-- Generar protocolo de cierre seguro
+- Generar protocolo de cierre seguro (?)
 - Generar control de errores y caídas de nodos
 - Realizar mas testing
 - Implementar Ledger distribuido
 
 ## Consultas:
-- La conexión de los nodos debe ser parte del programa?
-- Que significa que un nodo pueda fallar pero no ser erroneo (crash y omisión?).
-- Hay que contemplar la reinserción o adición de nodos una vez iniciada la red?
-- Nuestra implementación difiere ligeramente del algoritmo ISIS (ISIS envia el mensaje, negocia la estampa, guarda el mensaje provisional, envia la estampa universal, actualiza el mensaje. Nuestro algoritmo envia peticion de negociar, negocia la estampa, envia el mensaje junto con la estampa final).
+- ~~La conexión de los nodos debe ser parte del programa?~~
+- ~~Que significa que un nodo pueda fallar pero no ser erroneo (crash y omisión?).~~
+- ~~Hay que contemplar la reinserción o adición de nodos una vez iniciada la red?~~
+- ~~Nuestra implementación difiere ligeramente del algoritmo ISIS (ISIS envia el mensaje, negocia la estampa, guarda el mensaje provisional, envia la estampa universal, actualiza el mensaje. Nuestro algoritmo envia peticion de negociar, negocia la estampa, envia el mensaje junto con la estampa final).~~
 - Cómo usar el servicio como una "entidad unica".
 - Cómo usar la salida del servicio para el Ledger (la idea es usar el programa del ISIS como librería/módulo para el Ledger? o se hace todo en el mismo programa?).
 
@@ -42,6 +42,44 @@ En el paper que ellos dieron primero dice que esto no debería suceder (pag 18):
 
 Sin embargo inmediatamente despues menciona que:
 > As with the communication history algorithm (Figure 11), the identifier of the message sender is used to break ties between messages with the same global timestamp.
+
+# Consulta 15/06
+Genial! Nuestras dudas son:
+1. Nuestro algoritmo difiere ligeramente del ISIS que figura en Wikipedia. El ISIS envía el mensaje junto con una estampa propuesta, el resto de nodos responden con una estampa y almacenan el mensaje de forma provisional, finalmente el nodo original envía la estampa universal (calculada a partir de las estampas que recibió de los otros nodos) y los otros nodos reacomodan la pila acordemente. En nuestro algoritmo el nodo que quiere hacer bcast envía solo una petición de estampa junto con su estampa propuesta, el resto de nodos le respoden con sus estampas propuestas, el nodo original calcula la estampa universal y la envía al resto junto con el mensaje.
+Es esta diferencia permitida o deberíamos seguir los pasos del algoritmo original al pie de la letra?
+2. Se menciona en el enunciado que los nodos pueden fallar pero no ser erroneos, también que consideramos al medio como fiable, por lo que los únicos casos de error a considerar serían error por crasheo de un nodo y error por omisión, no?
+3. Debemos contemplar la resinserción de nodos una vez iniciada la comunicación?
+4. Debemos incluir algún tipo de automatización para el inicio de los nodos o se inician todos a mano en sus respectivas terminales?
+
+Martín Ceresa
+1. No estoy seguro si entendí bien la diferencia, la diferencia concreta es que el mensaje no se envía en su implementación? No recuerdo bien que es lo que dice ni bien sobre que supuestos están trabajando, pero mientras se envíe un paquete proponiendo asignarle tal numero de secuencia a un identificador único está bien. No necesita ser necesariamente un mensaje. Porque al final del día el nodo que respondió a la petición original debería saber a que mensaje o a qué le tiene que actualizar el numero de secuencia en caso que sea necesario.
+2. Sí. Concretamente se asume que no hay nodos byzantinos.
+3. No necesariamente, si lo hacen tienen que documentarlo.
+4. Lo mismo que 3.
+
+Bolzan Francisco
+Muchas gracias.
+No, nuestra implementación funciona así:
+- NodoX quiere hacer bcast del mensaje Msg
+- NodoX envía una petición de propuesta al resto de nodos junto con su estampa propuesta
+- El resto de nodos reciben dicha petición y mandan una estampa al NodoX
+- NodoX recibe dichas estampas y cuando tiene todas selecciona la mas alta (UStamp)
+- NodoX envía {Msg, UStamp} al resto de nodos
+- En nuestra implementación no hay un identificador único del mensaje ya que NodoX lo envía finalmente junto con su estampa definitiva, y como NodoX trabaja los mensajes de a uno sabe a que mensaje asignar dicha estampa.
+
+Martín Ceresa
+Claro, asumen que el nodo envía de un mensaje por vez. Eso no es necesariamente así
+
+Bolzan Francisco
+O sea que los nodos deberían poder procesar el envío de multiples mensajes en simultaneo?
+Pregunto porque como lo tenemos ahora los mensajes eventualmente serán procesados y enviados, por lo que no se pierden mensajes a pesar de que los nodos los procesan de a uno. Sería necesario entonces que los nodos puedan procesar múltiples mensajes en simultaneo?
+
+Martín Ceresa
+No es necesario, pero deberán documentarlo.
+Era un poco a la respuesta de porque estaba implementado así en Wikipedia o etc...
+
+## Observaciones
+ISIS mantiene una ventaja sobre nuestra implementación que es la posibilidad de que un nodo procese el envío de múltiples mensajes a la vez. Esto no afecta a las propiedades de liveness, correctitud y atomicidad, pero aún así es algo a tener en cuenta. Podemos seguir adelante como estamos y documentarlo ó cambiar el código para seguir la implementación original (requiere un refactor importante).
 
 # Deprecated
 ## Algunos resultados de tests:
