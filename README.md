@@ -12,13 +12,16 @@
 9. ACLARACION: la funcion make results es horrible, preguntame si la queres usar
 
 ## Pendiente prototipo 1:
+- Mayor problema actual: si un nodo cae luego de pedir un consenso pero antes de enviar el mensaje con el resultado final entonces el resto de nodos no usarán la UStamp que hayan acordado pero tampoco tendrán el mensaje de dicha estampa, por lo que quedarán esperando un mensaje que nunca llegará (verificar si esto de verdad sucede, es decir, verificar si el proceso de votacion de las estampas reserva dichas estampas).
 - Generar protocolo de cierre seguro
 - Generar control de errores y caídas de nodos
 - Realizar mas testing
+- Implementar Ledger distribuido
 
 ## Consultas:
 - La conexión de los nodos debe ser parte del programa?
 - Que significa que un nodo pueda fallar pero no ser erroneo.
+- Hay que contemplar la reinserción o adición de nodos una vez iniciada la red?
 - Nuestra implementación difiere ligeramente del algoritmo ISIS (ISIS envia el mensaje, negocia la estampa, guarda el mensaje provisional, envia la estampa universal, actualiza el mensaje. Nuestro algoritmo envia peticion de negociar, negocia la estampa, envia el mensaje junto con la estampa final).
 - Cómo usar el servicio como una "entidad unica".
 - Cómo usar la salida del servicio para el Ledger.
