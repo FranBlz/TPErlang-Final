@@ -20,7 +20,7 @@
 
 ## Consultas:
 - La conexión de los nodos debe ser parte del programa?
-- Que significa que un nodo pueda fallar pero no ser erroneo.
+- Que significa que un nodo pueda fallar pero no ser erroneo (crash y omisión?).
 - Hay que contemplar la reinserción o adición de nodos una vez iniciada la red?
 - Nuestra implementación difiere ligeramente del algoritmo ISIS (ISIS envia el mensaje, negocia la estampa, guarda el mensaje provisional, envia la estampa universal, actualiza el mensaje. Nuestro algoritmo envia peticion de negociar, negocia la estampa, envia el mensaje junto con la estampa final).
 - Cómo usar el servicio como una "entidad unica".
