@@ -22,6 +22,23 @@
 - Realizar mas testing
 - Implementar Ledger distribuido
 
+## Debugging
+Resultados interesantes de una prueba en 30 nodos, 12 hablantes, 10 mensajes c/u, total recibidos 120:
+> - Deliver: 45 node2@FranPC 7320 
+> - Deliver: 47 node9@FranPC 3570 
+> - Deliver: 47 node4@FranPC 751 
+> - Deliver: 49 node23@FranPC 3704 
+
+> - Deliver: 88 node17@FranPC 1368 
+> - Deliver: 90 node9@FranPC 5660 
+> - Deliver: 89 node4@FranPC 9562 
+> - Deliver: 91 node2@FranPC 6948
+
+Notar que en ambos casos el ganador de la propuesta es el nodo9 seguido del nodo4, no se presentan errores en el resto de victorias de dichos nodos. Notar también que en el resto de delivers desde el deliver 47 no vuelven a estar uno seguido del otro hasta el deliver 90.
+No creo que todo esto sea coincidencia, habría que revisar si esto es un problema inherente del ISIS o si hay algo mal en la implementación.
+- Consultar a Martin sobre esto
+- Recrear la prueba hasta obtener el mismo problema pero con la opcion de guardar los resultados en archivos, comparar los archivos externamente para verificar si esto altera de alguan forma el orden total
+
 ## Consultas:
 - Cómo usar el servicio como una "entidad unica".
 - Cómo usar la salida del servicio para el Ledger (la idea es usar el programa del ISIS como librería/módulo para el Ledger? o se hace todo en el mismo programa?).
