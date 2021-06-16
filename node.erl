@@ -1,47 +1,33 @@
 -module(node).
 -include("struct.hrl").
 -export([start/0, stop/0, send/1, generate/2]).
--export([senderFun/0, communicatorFun/2, listenerFun/3, deliverFun/2]).
+-export([senderFun/1, listenerFun/4, deliverFun/1]).
 
--define(MAX_NODES, 4).
+%-define(MAX_NODES, 4).
 
 %% send envia definitivo, deliver (escribe y escucha) consenso, listener escuche mensaje
 start() ->
-    register(sender, spawn(?MODULE, senderFun,[])),
-    register(deliver, spawn(?MODULE, deliverFun,[0, 0])),
-    register(listener, spawn(?MODULE, listenerFun,[1, dict:new(), infinity])),
-    register(communicator, spawn(?MODULE, communicatorFun,[0, ""])).
+    register(sender, spawn(?MODULE, senderFun,[0])),
+    register(deliver, spawn(?MODULE, deliverFun,[dict:new()])),
+    register(listener, spawn(?MODULE, listenerFun,[0, dict:new(), [], infinity])).
 
-stop() -> 
+stop() ->
     fin.
 
 %% Beginning of sender section
 send(Msg) ->
-    sender ! #send{msg = Msg, sender = self()},
+    sender ! #send{msg = Msg, sender = node()},
     ok.
 
-senderFun() ->
+senderFun(Counter) ->
     receive
         M when is_record(M, send) ->
-            communicator ! {add, M#send.msg},
-            senderFun();
+            listener ! #mcast{mid = {M#send.sender, Counter + 1}, msg = M#send.msg},
+            lists:foreach(fun(X) -> {listener, X} ! #mcast{mid = {M#send.sender, Counter + 1}, msg = M#send.msg} end, nodes()),
+            senderFun(Counter + 1);
         _ ->
-            io:format("Recv cualca ~n"),
-            senderFun()
-    end.
-
-communicatorFun(TO, CurrentMsg) ->
-    receive
-        {prop, Num} ->
-            listener ! #msg{body = CurrentMsg, sender = self(), sn = Num},
-            lists:foreach(fun(X) -> {listener, X} ! #msg{body = CurrentMsg, sender = self(), sn = Num} end, nodes()),
-            communicatorFun(0,"")
-    after TO -> 
-        receive
-            {add, Msg} ->
-                deliver ! get_proposal,
-                communicatorFun(infinity, Msg)
-        end
+            io:format("Invalid msg ~n"),
+            senderFun(Counter)
     end.
 %% End of sender section
 
@@ -51,45 +37,64 @@ maximum(V1, V2) when V1 >= V2 ->
 maximum(_V1, V2) ->
     V2.
 
-deliverFun(Hprop, Nrep) ->
+%% Mid #{Hprop, Proposer, Nrep}
+%% Mid = {node, sn}
+deliverFun(Dicc) ->
     receive
-        get_proposal ->
-            lists:foreach(fun(X) -> {deliver, X} ! #prop{sender = self(), sn = Hprop} end, nodes()),
-            deliverFun(Hprop, 1);
-        M when is_record(M, prop) ->
-            M#prop.sender ! #rep{sender = self(), sn = maximum(M#prop.sn, Hprop) + 1},
-            deliverFun(maximum(M#prop.sn, Hprop) + 1, Nrep);
         M when is_record(M, rep) ->
-            Total = length(nodes()),
-            if 
-                Nrep + 1 == Total ->
-                    communicator ! {prop, maximum(M#rep.sn, Hprop)},
-                    deliverFun(maximum(M#rep.sn, Hprop), 0);
-                true ->
-                    deliverFun(maximum(M#rep.sn, Hprop), Nrep + 1)
+            case dict:find(M#rep.mid, Dicc) of
+                {ok, [{Hprop, Proposer, Nrep}]} ->
+                    Total = length(nodes()),
+                    if
+                        Nrep + 1 == Total ->
+                            listener ! #result{mid = M#rep.mid, hprop = maximum(Hprop, M#rep.hprop), proposer = maximum(Proposer, M#rep.proposer)},
+                            lists:foreach(fun(X) -> {listener, X} ! #result{mid = M#rep.mid, hprop = maximum(Hprop, M#rep.hprop), proposer = maximum(Proposer, M#rep.proposer)} end, nodes()),
+                            deliverFun(dict:erase(M#rep.mid, Dicc));
+                        Hprop < M#rep.hprop ->
+                            deliverFun(dict:update(M#rep.mid, fun (_) -> [{M#rep.hprop, M#rep.proposer, Nrep + 1}] end, Dicc));
+                        Hprop == M#rep.hprop and (M#rep.proposer < Proposer) ->
+                            deliverFun(dict:update(M#rep.mid, fun (_) -> [{M#rep.hprop, M#rep.proposer, Nrep + 1}] end, Dicc));
+                        true ->
+                            deliverFun(dict:update(M#rep.mid, fun (_) -> [{Hprop, Proposer, Nrep + 1}] end, Dicc))
+                    end;
+                error -> 
+                    deliverFun(dict:append(M#rep.mid, {M#rep.hprop, M#rep.proposer, 1}, Dicc))
             end
     end.
 %% End of deliver section
 
+
+
 %% Beginning of listener section
-listenerFun(N, Pend, TO) ->
-    receive 
-        M when is_record(M, msg) ->
-            case dict:find(M#msg.sn, Pend) of
-                {ok, _Smth} ->
-                    io:format("PISADO~n"),
-                    %io:format("Deliver : ~p ~p ~n", [Value, N]),
-                    listenerFun(N, dict:append(M#msg.sn, M#msg.body, Pend), 0);
-                error ->
-                    listenerFun(N, dict:append(M#msg.sn, M#msg.body, Pend), 0)
-            end
+insertar([], Tupla) -> [Tupla];
+insertar([{CProposal, CProposer, CMsg} | Tl], {Proposal, Proposer, Msg})
+    when CProposal < Proposal ->
+        [{CProposal, CProposer, CMsg} | insertar(Tl, {Proposal, Proposer, Msg})];
+insertar([{CProposal, CProposer, CMsg} | Tl], {Proposal, Proposer, Msg})
+    when CProposal > Proposal ->
+        [{Proposal, Proposer, Msg} | [{CProposal, CProposer, CMsg} | Tl]];
+insertar([{CProposal, CProposer, CMsg} | Tl], {Proposal, Proposer, Msg})
+    when CProposer < Proposer ->
+        [{CProposal, CProposer, CMsg} | insertar(Tl, {Proposal, Proposer, Msg})];
+insertar([CProp | Tl], Prop) ->
+    [Prop|[CProp|Tl]].
+
+listenerFun(S, Pend, Defin, TO) ->
+    receive
+        M when is_record(M, mcast) ->
+            {Sender, _Counter} = M#mcast.mid,
+            {deliver, Sender} ! #rep{mid = M#mcast.mid, hprop = S + 1, proposer = node()},
+            listenerFun(S + 1, dict:append(M#mcast.mid, M#mcast.msg, Pend), Defin, infinity);
+        M when is_record(M, result) ->
+            {ok, [Msg]} = dict:find(M#result.mid, Pend),
+            listenerFun(maximum(S, M#result.hprop), dict:erase(M#result.mid, Pend), insertar(Defin, {M#result.hprop, M#result.proposer, Msg}), 0)
     after TO ->
-        case dict:find(N, Pend) of
-                {ok, [Value|_Tl]} ->
-                    io:format("Deliver : ~p ~p ~n", [Value, N]),
-                    listenerFun(N + 1, Pend, 0);
-                error ->
-                    listenerFun(N, Pend, infinity)
+        case Defin of
+            [{Hprop, Proposer, Msg} | Tl] ->
+                io:format("Deliver: ~p ~p ~p ~n", [Hprop, Proposer, Msg]),
+                listenerFun(S, Pend, Tl, 0);
+            [] ->
+                listenerFun(S, Pend, [], infinity)
         end
     end.
 %% End of listener section

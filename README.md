@@ -11,37 +11,20 @@
 8. si se usó make results, cerrar las terminales una a una con q().
 9. ACLARACION: la funcion make results es horrible, preguntame si la queres usar
 
+## Make y testing
+- Makefile
+- Modulo make de Erlang (https://erlang.org/doc/man/make.html)
+- <mark>Problema actual:</mark> no es posible ejecutar una funcion en un nodo remoto, esto hace que se deba hacer node:start(). en cada terminal.
+
 ## Pendiente prototipo 1:
-- Mayor problema actual: si un nodo cae luego de pedir un consenso pero antes de enviar el mensaje con el resultado final entonces el resto de nodos no usarán la UStamp que hayan acordado pero tampoco tendrán el mensaje de dicha estampa, por lo que quedarán esperando un mensaje que nunca llegará.
 - Generar protocolo de cierre seguro (?)
 - Generar control de errores y caídas de nodos
 - Realizar mas testing
 - Implementar Ledger distribuido
 
 ## Consultas:
-- ~~La conexión de los nodos debe ser parte del programa?~~
-- ~~Que significa que un nodo pueda fallar pero no ser erroneo (crash y omisión?).~~
-- ~~Hay que contemplar la reinserción o adición de nodos una vez iniciada la red?~~
-- ~~Nuestra implementación difiere ligeramente del algoritmo ISIS (ISIS envia el mensaje, negocia la estampa, guarda el mensaje provisional, envia la estampa universal, actualiza el mensaje. Nuestro algoritmo envia peticion de negociar, negocia la estampa, envia el mensaje junto con la estampa final).~~
 - Cómo usar el servicio como una "entidad unica".
 - Cómo usar la salida del servicio para el Ledger (la idea es usar el programa del ISIS como librería/módulo para el Ledger? o se hace todo en el mismo programa?).
-
-## Make y testing
-- Makefile
-- Modulo make de Erlang (https://erlang.org/doc/man/make.html)
-- <mark>Problema actual:</mark> no es posible ejecutar una funcion en un nodo remoto, esto hace que se deba hacer node:start(). en cada terminal.
-
-## Aclaración importante
-En wikipedia dice que de llegar un mensaje con valor menor o igual al contador se imprime sin esperar:
-> Una vez escogido el número de secuencia se manda a todos los procesos, se reordena el buzón y se procede a realizar el envío del mensaje.
-> Si el acuerdo que llega a un proceso tiene un valor mayor a los guardados en el buzón, esperaremos a que lleguen los demás acuerdos para ir sacando del buzón y enviado el mensaje del menor al mayor número de secuencia.
-> Si el acuerdo que llega a un proceso tiene un valor menor que los guardados en el buzón, podemos enviar directamente este mensaje sin necesidad de esperar.
-
-En el paper que ellos dieron primero dice que esto no debería suceder (pag 18):
-> Messages are delivered in the order of their global timestamp, that is, a message m can only be delivered once it has been assigned its global timestamp sn(m), and no other undelivered message m can possibly receive a timestamp sn(m) smaller or equal to sn(m)
-
-Sin embargo inmediatamente despues menciona que:
-> As with the communication history algorithm (Figure 11), the identifier of the message sender is used to break ties between messages with the same global timestamp.
 
 # Consulta 15/06
 Genial! Nuestras dudas son:
@@ -78,8 +61,6 @@ Martín Ceresa
 No es necesario, pero deberán documentarlo.
 Era un poco a la respuesta de porque estaba implementado así en Wikipedia o etc...
 
-## Observaciones
-ISIS mantiene una ventaja sobre nuestra implementación que es la posibilidad de que un nodo procese el envío de múltiples mensajes a la vez. Esto no afecta a las propiedades de liveness, correctitud y atomicidad, pero aún así es algo a tener en cuenta. Podemos seguir adelante como estamos y documentarlo ó cambiar el código para seguir la implementación original (requiere un refactor importante).
 
 # Deprecated
 ## Algunos resultados de tests:
@@ -110,3 +91,24 @@ se decida una que ya esté ocupada, en dicho caso esta se agrega al diccionario 
 
 - ~~Observaciones: el ratio de perdida parece disminuir al aumentar la relacion entre nodos totales y nodos hablando. El programa parece funcionar bien dejando de lado los mensajes perdidos. Sorprendentemente, el orden total no se ve afectado por la perdida e mensajes, no se por que será esto ya que a mi entender llega mas de 1 mensaje con la misma UStamp al diccionario, pero parece que el mensaje pisado siempre es el mismo a través de los nodos...habría que revisarlo.~~
 - ~~<mark>IMPORTANTE:</mark> habría que consultar lo que hablamos la otra vez sobre estos mensajes que se enumeran igual, por lo que leí es algo que puede pasar (mirar fondo del README), pero valdría la pena consultarlo antes de implementar soluciones al problema.~~
+
+## Consultas:
+- ~~La conexión de los nodos debe ser parte del programa?~~
+- ~~Que significa que un nodo pueda fallar pero no ser erroneo (crash y omisión?).~~
+- ~~Hay que contemplar la reinserción o adición de nodos una vez iniciada la red?~~
+- ~~Nuestra implementación difiere ligeramente del algoritmo ISIS (ISIS envia el mensaje, negocia la estampa, guarda el mensaje provisional, envia la estampa universal, actualiza el mensaje. Nuestro algoritmo envia peticion de negociar, negocia la estampa, envia el mensaje junto con la estampa final).~~
+
+## Aclaración importante
+En wikipedia dice que de llegar un mensaje con valor menor o igual al contador se imprime sin esperar:
+> Una vez escogido el número de secuencia se manda a todos los procesos, se reordena el buzón y se procede a realizar el envío del mensaje.
+> Si el acuerdo que llega a un proceso tiene un valor mayor a los guardados en el buzón, esperaremos a que lleguen los demás acuerdos para ir sacando del buzón y enviado el mensaje del menor al mayor número de secuencia.
+> Si el acuerdo que llega a un proceso tiene un valor menor que los guardados en el buzón, podemos enviar directamente este mensaje sin necesidad de esperar.
+
+En el paper que ellos dieron primero dice que esto no debería suceder (pag 18):
+> Messages are delivered in the order of their global timestamp, that is, a message m can only be delivered once it has been assigned its global timestamp sn(m), and no other undelivered message m can possibly receive a timestamp sn(m) smaller or equal to sn(m)
+
+Sin embargo inmediatamente despues menciona que:
+> As with the communication history algorithm (Figure 11), the identifier of the message sender is used to break ties between messages with the same global timestamp.
+
+## Observaciones
+ISIS mantiene una ventaja sobre nuestra implementación que es la posibilidad de que un nodo procese el envío de múltiples mensajes a la vez. Esto no afecta a las propiedades de liveness, correctitud y atomicidad, pero aún así es algo a tener en cuenta. Podemos seguir adelante como estamos y documentarlo ó cambiar el código para seguir la implementación original (requiere un refactor importante).
