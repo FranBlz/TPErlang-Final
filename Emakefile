@@ -1,4 +1,4 @@
-'nodeV2'.
+'node'.
 'conectar'.
 {'conectar',[load]}.
-{'nodeV2',[load]}.
+{'node',[load]}.
