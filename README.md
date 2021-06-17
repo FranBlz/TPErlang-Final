@@ -54,9 +54,13 @@ Remarco que en este caso no sucedió el salto de un número como en el anterior,
 
 # Consulta 17/06:
 - Cómo conectarse al servicio como una "entidad unica"?
+> - No es necesario, podemos asumir que todos los nodos conocen a quien haga falta para comunicarse, y que se conectan directamente con quien sea necesario.
 - La idea de los servidores del Ledger (código 8) es modificar el archivo del bcast atomico? o son archivos distintos?
+> - Cualquiera es válida, la idea original es que el bcast atómico es una entidad stand-alone y el ledger utiliza dich servicio, pero cualquier opción es válida si la documentamos.
 - Cómo controlar fallos por crash de un nodo?
+> - No es necesario corregir dichos errores, con detectarlos y notificar está bien. También habría que detectar si la red pierde demasiados nodos y pierde
 - Comentar situación de errores a Martin.
+> - Lo va ver y nos avisa.
 
 # Consulta 15/06
 Genial! Nuestras dudas son:
