@@ -23,7 +23,7 @@
 - Implementar Ledger distribuido
 
 ## Debugging
-Resultados interesantes de una prueba en 30 nodos, 12 hablantes, 10 mensajes c/u, total recibidos 120:
+Resultados de una prueba en 30 nodos, 12 hablantes, 10 mensajes c/u, total recibidos 120:
 > - Deliver: 45 node2@FranPC 7320 
 > - Deliver: 47 node9@FranPC 3570 
 > - Deliver: 47 node4@FranPC 751 
@@ -38,6 +38,19 @@ Notar que en ambos casos el ganador de la propuesta es el nodo9 seguido del nodo
 No creo que todo esto sea coincidencia, habría que revisar si esto es un problema inherente del ISIS o si hay algo mal en la implementación.
 - Consultar a Martin sobre esto
 - Recrear la prueba hasta obtener el mismo problema pero con la opcion de guardar los resultados en archivos, comparar los archivos externamente para verificar si esto altera de alguan forma el orden total
+
+Resultados de una prueba en 20 nodos, 12 hablantes, 20 mensajes c/u, total recibidos 240:
+> - (node13@FranPC)2> Deliver: 104 node6@FranPC 8186 
+> - (node13@FranPC)2> Deliver: 106 node9@FranPC 3518 
+> - (node13@FranPC)2> Deliver: 106 node6@FranPC 6257 
+> - (node13@FranPC)2> Deliver: 107 node4@FranPC 6272
+
+> - (node13@FranPC)2> Deliver: 173 node12@FranPC 2336 
+> - (node13@FranPC)2> Deliver: 175 node9@FranPC 5036 
+> - (node13@FranPC)2> Deliver: 175 node4@FranPC 4472 
+> - (node13@FranPC)2> Deliver: 176 node6@FranPC 4782
+
+
 
 ## Consultas:
 - Cómo usar el servicio como una "entidad unica".
