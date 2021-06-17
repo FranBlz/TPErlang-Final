@@ -51,10 +51,12 @@ Resultados de una prueba en 20 nodos, 12 hablantes, 20 mensajes c/u, total recib
 > - (node13@FranPC)2> Deliver: 176 node6@FranPC 4782
 
 
+## Consulta 17/06:
+- Cómo conectarse al servicio como una "entidad unica"?
+- La idea de los servidores del Ledger (código 8) es modificar el archivo del bcast atomico? o son archivos distintos?
+- Cómo controlar fallos por crash de un nodo?
+- Comentar situación de errores a Martin.
 
-## Consultas:
-- Cómo usar el servicio como una "entidad unica".
-- Cómo usar la salida del servicio para el Ledger (la idea es usar el programa del ISIS como librería/módulo para el Ledger? o se hace todo en el mismo programa?).
 
 # Consulta 15/06
 Genial! Nuestras dudas son:
