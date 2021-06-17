@@ -50,11 +50,13 @@ Resultados de una prueba en 20 nodos, 12 hablantes, 20 mensajes c/u, total recib
 > - (node13@FranPC)2> Deliver: 175 node4@FranPC 4472 
 > - (node13@FranPC)2> Deliver: 176 node6@FranPC 4782
 
+Remarco que en este caso no sucedió el salto de un número como en el anterior, y tampoco sucedió el problema de los números desordenados. Lo cual confirma junto con la prueba anterior que estos errores estan vinculados. Es decir, si dos nodos deciden el mismo número y no se salta ningun numero a posterior el código anda bien. Pero si dos nodos deciden el mismo número y saltan un número a posterior entonces surgen problemas (además del número saltado).
 
-
-## Consultas:
-- Cómo usar el servicio como una "entidad unica".
-- Cómo usar la salida del servicio para el Ledger (la idea es usar el programa del ISIS como librería/módulo para el Ledger? o se hace todo en el mismo programa?).
+# Consulta 17/06:
+- Cómo conectarse al servicio como una "entidad unica"?
+- La idea de los servidores del Ledger (código 8) es modificar el archivo del bcast atomico? o son archivos distintos?
+- Cómo controlar fallos por crash de un nodo?
+- Comentar situación de errores a Martin.
 
 # Consulta 15/06
 Genial! Nuestras dudas son:
