@@ -2,9 +2,9 @@
 -include("struct.hrl").
 -export([start/0, stop/0, send/1, generate/2]).
 -export([senderFun/1, listenerFun/4, deliverFun/1]).
-
+-define(CREATE_MSG(Msg, N), #mcast{mid={Msg#send.sender, N+1}, msg=Msg#send.msg}).
+-define(CREATE_RES(MsgId, Hprop, Prop), #result{mid=MsgId, hprop=Hprop, proposer=Prop}).
 %-define(MAX_NODES, 4).
-
 %% send envia definitivo, deliver (escribe y escucha) consenso, listener escuche mensaje
 start() ->
     register(sender, spawn(?MODULE, senderFun,[0])),
@@ -19,46 +19,48 @@ send(Msg) ->
     sender ! #send{msg = Msg, sender = node()},
     ok.
 
-senderFun(Counter) ->
+%% * Renombrar a ABroadcast segun paper
+senderFun(Cant) ->
     receive
         M when is_record(M, send) ->
-            listener ! #mcast{mid = {M#send.sender, Counter + 1}, msg = M#send.msg},
-            lists:foreach(fun(X) -> {listener, X} ! #mcast{mid = {M#send.sender, Counter + 1}, msg = M#send.msg} end, nodes()),
-            senderFun(Counter + 1);
+            Msg = ?CREATE_MSG(M, Cant),
+            listener ! Msg,
+            lists:foreach(fun(Node) -> {listener, Node} ! Msg end, nodes()),
+            senderFun(Cant + 1);
         _ ->
             io:format("Invalid msg ~n"),
-            senderFun(Counter)
+            senderFun(Cant)
     end.
 %% End of sender section
 
-%% Beginning of deliver section
-maximum(V1, V2) when V1 >= V2 ->
-    V1;
-maximum(_V1, V2) ->
-    V2.
+getProp(OldHprop, NewHprop, _, NewProp) when OldHprop < NewHprop -> NewProp;
+getProp(OldHprop, NewHprop, OldProp, _) when OldHprop > NewHprop -> OldProp;
+getProp(_, _, OldProp, NewProp) when OldProp < NewProp -> NewProp;
+getProp(_, _, OldProp, _) -> OldProp.
 
 %% Mid #{Hprop, Proposer, Nrep}
 %% Mid = {node, sn}
-deliverFun(Dicc) ->
+%% * Renombrar a ADeliver segun paper
+deliverFun(MsgDict) ->
     receive
-        M when is_record(M, rep) ->
-            case dict:find(M#rep.mid, Dicc) of
-                {ok, [{Hprop, Proposer, Nrep}]} ->
+        #rep{mid = MsgId, hprop = NewHprop, proposer = NewProposer} ->
+            case dict:find(MsgId, MsgDict) of
+                {ok, [{OldHprop, OldProposer, Nrep}]} ->
+                    HProp = max(OldHprop, NewHprop),
+                    Prop = getProp(OldHprop, NewHprop, OldProposer, NewProposer),
+                    Cant = Nrep + 1,
                     Total = length(nodes()),
                     if
-                        Nrep + 1 == Total ->
-                            listener ! #result{mid = M#rep.mid, hprop = maximum(Hprop, M#rep.hprop), proposer = maximum(Proposer, M#rep.proposer)},
-                            lists:foreach(fun(X) -> {listener, X} ! #result{mid = M#rep.mid, hprop = maximum(Hprop, M#rep.hprop), proposer = maximum(Proposer, M#rep.proposer)} end, nodes()),
-                            deliverFun(dict:erase(M#rep.mid, Dicc));
-                        Hprop < M#rep.hprop ->
-                            deliverFun(dict:update(M#rep.mid, fun (_) -> [{M#rep.hprop, M#rep.proposer, Nrep + 1}] end, Dicc));
-                        Hprop == M#rep.hprop and (M#rep.proposer < Proposer) ->
-                            deliverFun(dict:update(M#rep.mid, fun (_) -> [{M#rep.hprop, M#rep.proposer, Nrep + 1}] end, Dicc));
+                        Cant == Total ->
+                            Res = ?CREATE_RES(MsgId, HProp, Prop),
+                            listener ! Res,
+                            lists:foreach(fun(Node) -> {listener, Node} ! Res end, nodes()),
+                            deliverFun(dict:erase(MsgId, MsgDict));
                         true ->
-                            deliverFun(dict:update(M#rep.mid, fun (_) -> [{Hprop, Proposer, Nrep + 1}] end, Dicc))
+                            deliverFun(dict:update(MsgId, fun (_) -> [{HProp, Prop, Cant}] end, MsgDict))
                     end;
                 error -> 
-                    deliverFun(dict:append(M#rep.mid, {M#rep.hprop, M#rep.proposer, 1}, Dicc))
+                    deliverFun(dict:append(MsgId, {NewHprop, NewProposer, 1}, MsgDict))
             end
     end.
 %% End of deliver section
@@ -87,7 +89,7 @@ listenerFun(S, Pend, Defin, TO) ->
             listenerFun(S + 1, dict:append(M#mcast.mid, M#mcast.msg, Pend), Defin, infinity);
         M when is_record(M, result) ->
             {ok, [Msg]} = dict:find(M#result.mid, Pend),
-            listenerFun(maximum(S, M#result.hprop), dict:erase(M#result.mid, Pend), insertar(Defin, {M#result.hprop, M#result.proposer, Msg}), 0)
+            listenerFun(max(S, M#result.hprop), dict:erase(M#result.mid, Pend), insertar(Defin, {M#result.hprop, M#result.proposer, Msg}), 0)
     after TO ->
         case Defin of
             [{Hprop, Proposer, Msg} | Tl] ->
