@@ -1,9 +1,9 @@
 -module(ledgerNode).
 -include("struct.hrl").
 -export([start/0, stop/0]).
--export([senderFun/1, listenerFun/4, deliverFun/1]).
+-export([senderFun/1, preListener/4, listenerFun/4, deliverFun/1]).
 
--define(MAX_NODES, 10).
+-define(MAX_NODES, 6).
 
 isNode(NodeName) ->
     0 < string:str(atom_to_list(NodeName), "node").
@@ -14,7 +14,7 @@ isLedger(NodeName) ->
 start() ->
     register(sender, spawn(?MODULE, senderFun,[0])),
     register(deliver, spawn(?MODULE, deliverFun,[dict:new()])),
-    register(listener, spawn(?MODULE, listenerFun,[0, dict:new(), [], infinity])).
+    register(listener, spawn(?MODULE, preListener,[0, dict:new(), [], infinity])).
 
 stop() ->
     fin.
@@ -26,6 +26,8 @@ senderFun(Counter) ->
             listener ! #mcast{mid = {node(), Counter + 1}, msg = M#send.msg},
             lists:foreach(fun(X) -> {listener, X} ! #mcast{mid = {node(), Counter + 1}, msg = M#send.msg} end, lists:filter(fun(X) -> isNode(X) end, nodes())),
             senderFun(Counter + 1);
+        rip ->
+            fin;
         _ ->
             io:format("Invalid msg ~n"),
             senderFun(Counter)
@@ -42,6 +44,8 @@ maximum(_V1, V2) ->
 %% Mid = {node, sn}
 deliverFun(Dicc) ->
     receive
+        rip ->
+            fin;
         M when is_record(M, rep) ->
             case dict:find(M#rep.mid, Dicc) of
                 {ok, [{Hprop, Proposer, Nrep}]} ->
@@ -79,6 +83,10 @@ insertar([{CProposal, CProposer, CMsg} | Tl], {Proposal, Proposer, Msg})
 insertar([CProp | Tl], Prop) ->
     [Prop|[CProp|Tl]].
 
+preListener(S, Pend, Defin, TO) ->
+    net_kernel:monitor_nodes(true),
+    listenerFun(S, Pend, Defin, TO).
+
 listenerFun(S, Pend, Defin, TO) ->
     receive
         M when is_record(M, mcast) ->
@@ -87,7 +95,25 @@ listenerFun(S, Pend, Defin, TO) ->
             listenerFun(S + 1, dict:append(M#mcast.mid, M#mcast.msg, Pend), Defin, infinity);
         M when is_record(M, result) ->
             {ok, [Msg]} = dict:find(M#result.mid, Pend),
-            listenerFun(maximum(S, M#result.hprop), dict:erase(M#result.mid, Pend), insertar(Defin, Msg), 0)
+            listenerFun(maximum(S, M#result.hprop), dict:erase(M#result.mid, Pend), insertar(Defin, Msg), 0);
+        {nodedown, Node} ->
+            io:format("Buenas~n"),
+            case isNode(Node) of
+                true ->
+                    Total = 2*length(lists:filter(fun(X) -> isNode(X) end, nodes())),
+                    if
+                        Total =< ?MAX_NODES ->
+                            sender ! rip,
+                            deliver ! rip,
+                            lists:foreach(fun(X) -> {listener, X} ! {serverdown} end, lists:filter(fun(X) -> isLedger(X) end, nodes())),
+                            erlang:halt();
+                        true ->
+                            lists:foreach(fun(X) -> {listener, X} ! {nodedown} end, lists:filter(fun(X) -> isLedger(X) end, nodes())),
+                            listenerFun(S, Pend, Defin, TO)
+                    end;
+                false ->
+                    listenerFun(S, Pend, Defin, TO)
+            end
     after TO ->
         case Defin of
             [{get, Who, Counter} | Tl] ->

@@ -16,12 +16,6 @@
 - Modulo make de Erlang (https://erlang.org/doc/man/make.html)
 - <mark>Problema actual:</mark> no es posible ejecutar una funcion en un nodo remoto, esto hace que se deba hacer node:start(). en cada terminal.
 
-## Pendiente prototipo 1:
-- Generar control de errores y caída de nodos en atomic broadcast
-- Implementar Ledger distribuido
-    - Como conectar clientes -> servidores -> atomic bcast (nodes()?)
-    - Implementar 
-- Realizar mas testing
 
 ## Debugging
 Resultados de una prueba en 30 nodos, 12 hablantes, 10 mensajes c/u, total recibidos 120:
@@ -50,20 +44,6 @@ Resultados de una prueba en 20 nodos, 12 hablantes, 20 mensajes c/u, total recib
 > - (node13@FranPC)2> Deliver: 175 node9@FranPC 5036 
 > - (node13@FranPC)2> Deliver: 175 node4@FranPC 4472 
 > - (node13@FranPC)2> Deliver: 176 node6@FranPC 4782
-
-# Temporary info
-Error in process <0.109.0> on node node1@FranPC with exit value:
-{badarg,[{erlang,send,
-                 [{deliver,<9233.93.0>},{rep,{<9233.93.0>,1},1,node1@FranPC}],
-                 [{error_info,#{module => erl_erts_errors}}]},
-         {ledgerNode,listenerFun,4,[{file,"ledgerNode.erl"},{line,86}]}]}
-
-=ERROR REPORT==== 19-Jun-2021::10:04:09.052403 ===
-Error in process <0.107.0> on node node1@FranPC with exit value:
-{badarg,[{erlang,send,
-                 [listener,{mcast,{<9233.93.0>,2},{get,cliente1@FranPC,2}}],
-                 [{error_info,#{module => erl_erts_errors}}]},
-         {ledgerNode,senderFun,1,[{file,"ledgerNode.erl"},{line,26}]}]}
 
 
 ## Consulta 17/06:
@@ -108,6 +88,17 @@ Martín Ceresa
 No es necesario, pero deberán documentarlo.
 Era un poco a la respuesta de porque estaba implementado así en Wikipedia o etc...
 
+## Trabajo 19/6
+Falta:
+ - Informe
+ - Falta hacer un refactor, hay muchas cosas que se repiten
+ - Verificar por que falla el refactor, tira siempre los nombres de los nodos mas altos
+ - Hay un error al seleccion de proposers en ledgerNode, donde seleccionamos el maximo cuando se llega al total de nodos (en old version)
+ - Posible revisar: sistema de conexion para los nodos
+ - Agregar el comando de net_kernel:connect al protocolo de inicio
+ - Verificar si se puede cambiar el group leader al momento de spawnear un proceso en otro nodo. Esto nos ayudaria a hacer un mejor protocolo de inicio.
+ - Revisar el problema en seccion debugging (en peor caso añadir a informe)
+ - Realizar testing extensivo con todo terminado
 
 # Deprecated
 ## Algunos resultados de tests:
