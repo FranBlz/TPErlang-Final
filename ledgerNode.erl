@@ -23,8 +23,8 @@ stop() ->
 senderFun(Counter) ->
     receive
         M when is_record(M, send) ->
-            listener ! #mcast{mid = {M#send.sender, Counter + 1}, msg = M#send.msg},
-            lists:foreach(fun(X) -> {listener, X} ! #mcast{mid = {M#send.sender, Counter + 1}, msg = M#send.msg} end, lists:filter(fun(X) -> isNode(X) end, nodes())),
+            listener ! #mcast{mid = {node(), Counter + 1}, msg = M#send.msg},
+            lists:foreach(fun(X) -> {listener, X} ! #mcast{mid = {node(), Counter + 1}, msg = M#send.msg} end, lists:filter(fun(X) -> isNode(X) end, nodes())),
             senderFun(Counter + 1);
         _ ->
             io:format("Invalid msg ~n"),
@@ -47,7 +47,7 @@ deliverFun(Dicc) ->
                 {ok, [{Hprop, Proposer, Nrep}]} ->
                     Total = length(nodes()),
                     if
-                        Nrep + 1 >= Total ->
+                        Nrep + 1 == Total ->
                             listener ! #result{mid = M#rep.mid, hprop = maximum(Hprop, M#rep.hprop), proposer = maximum(Proposer, M#rep.proposer)},
                             lists:foreach(fun(X) -> {listener, X} ! #result{mid = M#rep.mid, hprop = maximum(Hprop, M#rep.hprop), proposer = maximum(Proposer, M#rep.proposer)} end, lists:filter(fun(X) -> isNode(X) end, nodes())),
                             deliverFun(dict:erase(M#rep.mid, Dicc));
@@ -94,7 +94,7 @@ listenerFun(S, Pend, Defin, TO) ->
                 lists:foreach(fun(X) -> {listener, X} ! {getRes, Who, Counter} end, lists:filter(fun(X) -> isLedger(X) end, nodes())),
                 listenerFun(S, Pend, Tl, 0);
             [{app, Who, Counter, Value} | Tl] ->
-                lists:foreach(fun(X) -> {listener, X} ! {app, Who, Counter, Value} end, lists:filter(fun(X) -> isLedger(X) end, nodes())),
+                lists:foreach(fun(X) -> {listener, X} ! {appRes, Who, Counter, Value} end, lists:filter(fun(X) -> isLedger(X) end, nodes())),
                 listenerFun(S, Pend, Tl, 0);
             [] ->
                 listenerFun(S, Pend, [], infinity)

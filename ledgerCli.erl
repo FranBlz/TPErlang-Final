@@ -18,11 +18,12 @@ senderFun(C) ->
 getFun() ->
     sender ! {get}.
 
-appendFun(Value) ->
+appendFun(Value) -> 
     sender ! {append, Value}.
 
 listenerFun() ->
     receive
-        {getRep, Counter, Ledger} ->
-            io:format("~p ~p ~n", [Counter, Ledger])
+        {getRes, Counter, Ledger} ->
+            io:format("~p ~p ~n", [Counter, Ledger]),
+            listenerFun()
     end.

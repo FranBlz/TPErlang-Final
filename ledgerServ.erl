@@ -12,10 +12,10 @@ isNode(NodeName) ->
 listenerFun(Ledger, GetPend, AppPend) ->
     receive
         {get, Who, Counter} ->
-            lists:foreach(fun(X) -> {sender, X} ! #send{msg = {get, Who, Counter}, sender = self()} end, lists:filter(fun(X) -> isNode(X) end, nodes())),
+            lists:foreach(fun(X) -> {sender, X} ! #send{msg = {get, Who, Counter}, sender = node()} end, lists:filter(fun(X) -> isNode(X) end, nodes())),
             listenerFun(Ledger, [{Who, Counter} | GetPend], AppPend);
         {app, Who, Counter, Value} ->
-            lists:foreach(fun(X) -> {sender, X} ! #send{msg = {app, Who, Counter, Value}, sender = self()} end, lists:filter(fun(X) -> isNode(X) end, nodes())),
+            lists:foreach(fun(X) -> {sender, X} ! #send{msg = {app, Who, Counter, Value}, sender = node()} end, lists:filter(fun(X) -> isNode(X) end, nodes())),
             listenerFun(Ledger, GetPend, [{Who, Counter} | AppPend]);
         {getRes, Who, Counter} ->
             IsMember = lists:member({Who, Counter}, GetPend),
@@ -32,6 +32,6 @@ listenerFun(Ledger, GetPend, AppPend) ->
                 IsMember ->
                     listenerFun(Ledger ++ [Value], GetPend, lists:delete({Who, Counter}, AppPend));
                 true ->
-                    listenerFun(Ledger, GetPend, AppPend)
+                    listenerFun(Ledger ++ [Value], GetPend, AppPend)
             end
     end.
