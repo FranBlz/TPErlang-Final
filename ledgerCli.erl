@@ -3,7 +3,7 @@
 
 start() ->
     register(sender, spawn(?MODULE, senderFun, [0])),
-    register(listener, spawn(?MODULE, listenerFun,[[], [], []])).
+    register(listener, spawn(?MODULE, listenerFun,[])).
 
 senderFun(C) ->
     receive

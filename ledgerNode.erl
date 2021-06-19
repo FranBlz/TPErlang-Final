@@ -3,9 +3,14 @@
 -export([start/0, stop/0]).
 -export([senderFun/1, listenerFun/4, deliverFun/1]).
 
-%-define(MAX_NODES, 4).
+-define(MAX_NODES, 10).
 
-%% send envia definitivo, deliver (escribe y escucha) consenso, listener escuche mensaje
+isNode(NodeName) ->
+    0 < string:str(atom_to_list(NodeName), "node").
+
+isLedger(NodeName) ->
+    0 < string:str(atom_to_list(NodeName), "ledger").
+
 start() ->
     register(sender, spawn(?MODULE, senderFun,[0])),
     register(deliver, spawn(?MODULE, deliverFun,[dict:new()])),
@@ -19,7 +24,7 @@ senderFun(Counter) ->
     receive
         M when is_record(M, send) ->
             listener ! #mcast{mid = {M#send.sender, Counter + 1}, msg = M#send.msg},
-            lists:foreach(fun(X) -> {listener, X} ! #mcast{mid = {M#send.sender, Counter + 1}, msg = M#send.msg} end, nodes()),
+            lists:foreach(fun(X) -> {listener, X} ! #mcast{mid = {M#send.sender, Counter + 1}, msg = M#send.msg} end, lists:filter(fun(X) -> isNode(X) end, nodes())),
             senderFun(Counter + 1);
         _ ->
             io:format("Invalid msg ~n"),
@@ -42,9 +47,9 @@ deliverFun(Dicc) ->
                 {ok, [{Hprop, Proposer, Nrep}]} ->
                     Total = length(nodes()),
                     if
-                        Nrep + 1 == Total ->
+                        Nrep + 1 >= Total ->
                             listener ! #result{mid = M#rep.mid, hprop = maximum(Hprop, M#rep.hprop), proposer = maximum(Proposer, M#rep.proposer)},
-                            lists:foreach(fun(X) -> {listener, X} ! #result{mid = M#rep.mid, hprop = maximum(Hprop, M#rep.hprop), proposer = maximum(Proposer, M#rep.proposer)} end, nodes()),
+                            lists:foreach(fun(X) -> {listener, X} ! #result{mid = M#rep.mid, hprop = maximum(Hprop, M#rep.hprop), proposer = maximum(Proposer, M#rep.proposer)} end, lists:filter(fun(X) -> isNode(X) end, nodes())),
                             deliverFun(dict:erase(M#rep.mid, Dicc));
                         Hprop < M#rep.hprop ->
                             deliverFun(dict:update(M#rep.mid, fun (_) -> [{M#rep.hprop, M#rep.proposer, Nrep + 1}] end, Dicc));
@@ -58,7 +63,6 @@ deliverFun(Dicc) ->
             end
     end.
 %% End of deliver section
-
 
 
 %% Beginning of listener section
@@ -87,10 +91,10 @@ listenerFun(S, Pend, Defin, TO) ->
     after TO ->
         case Defin of
             [{get, Who, Counter} | Tl] ->
-                lists:foreach(fun(X) -> {listener, X} ! {getRes, Who, Counter} end, nodes(hidden)),
+                lists:foreach(fun(X) -> {listener, X} ! {getRes, Who, Counter} end, lists:filter(fun(X) -> isLedger(X) end, nodes())),
                 listenerFun(S, Pend, Tl, 0);
             [{app, Who, Counter, Value} | Tl] ->
-                lists:foreach(fun(X) -> {listener, X} ! {app, Who, Counter, Value} end, nodes(hidden)),
+                lists:foreach(fun(X) -> {listener, X} ! {app, Who, Counter, Value} end, lists:filter(fun(X) -> isLedger(X) end, nodes())),
                 listenerFun(S, Pend, Tl, 0);
             [] ->
                 listenerFun(S, Pend, [], infinity)

@@ -17,10 +17,11 @@
 - <mark>Problema actual:</mark> no es posible ejecutar una funcion en un nodo remoto, esto hace que se deba hacer node:start(). en cada terminal.
 
 ## Pendiente prototipo 1:
-- Generar protocolo de cierre seguro (?)
-- Generar control de errores y caídas de nodos
-- Realizar mas testing
+- Generar control de errores y caída de nodos en atomic broadcast
 - Implementar Ledger distribuido
+    - Como conectar clientes -> servidores -> atomic bcast (nodes()?)
+    - Implementar 
+- Realizar mas testing
 
 ## Debugging
 Resultados de una prueba en 30 nodos, 12 hablantes, 10 mensajes c/u, total recibidos 120:
@@ -49,6 +50,20 @@ Resultados de una prueba en 20 nodos, 12 hablantes, 20 mensajes c/u, total recib
 > - (node13@FranPC)2> Deliver: 175 node9@FranPC 5036 
 > - (node13@FranPC)2> Deliver: 175 node4@FranPC 4472 
 > - (node13@FranPC)2> Deliver: 176 node6@FranPC 4782
+
+# Temporary info
+Error in process <0.109.0> on node node1@FranPC with exit value:
+{badarg,[{erlang,send,
+                 [{deliver,<9233.93.0>},{rep,{<9233.93.0>,1},1,node1@FranPC}],
+                 [{error_info,#{module => erl_erts_errors}}]},
+         {ledgerNode,listenerFun,4,[{file,"ledgerNode.erl"},{line,86}]}]}
+
+=ERROR REPORT==== 19-Jun-2021::10:04:09.052403 ===
+Error in process <0.107.0> on node node1@FranPC with exit value:
+{badarg,[{erlang,send,
+                 [listener,{mcast,{<9233.93.0>,2},{get,cliente1@FranPC,2}}],
+                 [{error_info,#{module => erl_erts_errors}}]},
+         {ledgerNode,senderFun,1,[{file,"ledgerNode.erl"},{line,26}]}]}
 
 
 ## Consulta 17/06:

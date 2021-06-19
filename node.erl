@@ -3,9 +3,8 @@
 -export([start/0, stop/0, send/1, generate/2]).
 -export([senderFun/1, listenerFun/4, deliverFun/1]).
 
-%-define(MAX_NODES, 4).
+-define(MAX_NODES, 10).
 
-%% send envia definitivo, deliver (escribe y escucha) consenso, listener escuche mensaje
 start() ->
     register(sender, spawn(?MODULE, senderFun,[0])),
     register(deliver, spawn(?MODULE, deliverFun,[dict:new()])),
@@ -46,7 +45,7 @@ deliverFun(Dicc) ->
                 {ok, [{Hprop, Proposer, Nrep}]} ->
                     Total = length(nodes()),
                     if
-                        Nrep + 1 == Total ->
+                        Nrep + 1 >= Total ->
                             listener ! #result{mid = M#rep.mid, hprop = maximum(Hprop, M#rep.hprop), proposer = maximum(Proposer, M#rep.proposer)},
                             lists:foreach(fun(X) -> {listener, X} ! #result{mid = M#rep.mid, hprop = maximum(Hprop, M#rep.hprop), proposer = maximum(Proposer, M#rep.proposer)} end, nodes()),
                             deliverFun(dict:erase(M#rep.mid, Dicc));
