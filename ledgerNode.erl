@@ -72,19 +72,21 @@ deliverFun(Dict) ->
             end
     end.
 
+propBigger({CNum, CProp, _}, {Num, Prop, _}) ->
+    if
+        CNum == Num -> CProp > Prop;
+        true -> CNum > Num
+    end.
+
 %% Beginning of listener section
-insertar([], Tupla) -> [Tupla];
-insertar([{CProposal, CProposer, CMsg} | Tl], {Proposal, Proposer, Msg})
-    when CProposal < Proposal ->
-        [{CProposal, CProposer, CMsg} | insertar(Tl, {Proposal, Proposer, Msg})];
-insertar([{CProposal, CProposer, CMsg} | Tl], {Proposal, Proposer, Msg})
-    when CProposal > Proposal ->
-        [{Proposal, Proposer, Msg} | [{CProposal, CProposer, CMsg} | Tl]];
-insertar([{CProposal, CProposer, CMsg} | Tl], {Proposal, Proposer, Msg})
-    when CProposer < Proposer ->
-        [{CProposal, CProposer, CMsg} | insertar(Tl, {Proposal, Proposer, Msg})];
-insertar([CProp | Tl], Prop) ->
-    [Prop|[CProp|Tl]].
+insertar([], Record) -> [Record];
+insertar([CMsg | Tl], Msg) ->
+    case propBigger(CMsg, Msg) of
+        true ->
+            [Msg | [CMsg | Tl]];
+        false ->
+            [CMsg|insertar(Tl, Msg)]
+    end.
 
 preListener(S, Pend, Defin, TO) ->
     net_kernel:monitor_nodes(true),
