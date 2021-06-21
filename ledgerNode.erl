@@ -1,7 +1,7 @@
 -module(ledgerNode).
 -include("struct.hrl").
 -export([start/0, stop/0]).
--export([senderFun/1, preListener/0, listenerFun/4, deliverFun/1, conectar/0, conectar/1]).
+-export([senderFun/1, preListener/0, listenerFun/4, deliverFun/1, conectar/0, conectar/1, generate/2]).
 -define(CREATE_MSG(Counter, Msg), #mcast{mid={node(), Counter + 1}, msg=Msg}).
 
 -define(INIT_NODES, 6).
@@ -34,7 +34,7 @@ senderFun(Counter) ->
             listener ! Msg,
             sendMsg(Msg, getNodes()),
             senderFun(Counter + 1);
-        rip ->
+        {rip} -> %Deberia ir entre llaves
             fin;
         _ ->
             io:format("Invalid msg ~n"),
@@ -50,7 +50,7 @@ getProp(_Rest, _New, Old) -> Old.
 % %% Mid = {node, sn}
 deliverFun(Dict) ->
     receive
-        rip ->
+        {rip} ->
             fin;
         #rep{mid = MsgId, hprop = NewHProp, proposer = NewProposer} ->
             case dict:find(MsgId, Dict) of
@@ -103,21 +103,27 @@ listenerFun(Proposal, Pend, Defin, TO) ->
                 Defin, infinity);
         M when is_record(M, result) ->
             {ok, [Msg]} = dict:find(M#result.mid, Pend),
+            case dict:is_empty(Pend) of
+                true ->
+                    NewTO = infinity;
+                false ->
+                    NewTO = 0
+            end,
             listenerFun(
-                max(Proposal, M#result.hprop), %Esto esta bien?
+                max(Proposal, M#result.hprop),
                 dict:erase(M#result.mid, Pend),
-                insertar(Defin, Msg), 0);  %Creo que no cambia si no estan ordenados
+                insertar(Defin, Msg), NewTO);
         {nodedown, Node} ->
             case isNode(Node) of
                 true ->
                     IsLessHalf = 2*length(getNodes()) =< ?INIT_NODES,
                     case IsLessHalf of
                         true ->
-                            sender ! rip,
-                            deliver ! rip,
+                            sender ! {rip},
+                            deliver ! {rip},
                             sendMsg({serverdown}, getOthers()),
                             erlang:halt();
-                        true ->
+                        false ->
                             sendMsg({nodedown}, getOthers()),
                             listenerFun(Proposal, Pend, Defin, TO)
                     end;
@@ -135,6 +141,11 @@ listenerFun(Proposal, Pend, Defin, TO) ->
     end.
 %% End of listener section
 
+generate(_TO, 0) -> finished;
+generate(TO, N) ->
+    timer:sleep(TO),
+    sender ! #send{msg = TO, sender = node()},
+    generate(round(rand:uniform()*10000), N - 1).
 
 conectar(0) ->
     listo;
