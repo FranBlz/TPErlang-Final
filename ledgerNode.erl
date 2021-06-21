@@ -15,6 +15,9 @@ isLedger(NodeName) ->
 getNodes() ->
     lists:filter(fun(Node) -> isNode(Node) end, nodes()).
 
+sendMsg(Nodes, Msg) ->
+    lists:foreach(fun (Node) -> {listener, Node} ! Msg end, Nodes).
+
 start() ->
     register(sender, spawn(?MODULE, senderFun,[0])),
     register(deliver, spawn(?MODULE, deliverFun,[dict:new()])),
@@ -29,7 +32,7 @@ senderFun(Counter) ->
         M when is_record(M, send) ->
             Msg = ?CREATE_MSG(Counter, M#send.msg),
             listener ! Msg,
-            lists:foreach(fun(Node) -> {listener, Node} ! Msg end, getNodes()),
+            sendMsg(getNodes(), Msg),
             senderFun(Counter + 1);
         rip ->
             fin;
@@ -39,34 +42,35 @@ senderFun(Counter) ->
     end.
 %% End of sender section
 
-%% Mid #{Hprop, Proposer, Nrep}
-%% Mid = {node, sn}
-deliverFun(Dicc) ->
+getProp(0, New, Old) -> max(New, Old);
+getProp(Rest, New, _Old) when Rest > 0 -> New;
+getProp(_Rest, _New, Old) -> Old.
+
+% %% Mid #{Hprop, Proposer, Nrep}
+% %% Mid = {node, sn}
+deliverFun(Dict) ->
     receive
         rip ->
             fin;
-        M when is_record(M, rep) ->
-            case dict:find(M#rep.mid, Dicc) of
-                {ok, [{Hprop, Proposer, Nrep}]} ->
-                    Total = length(nodes()),
-                    if
-                        Nrep + 1 == Total ->
-                            listener ! #result{mid = M#rep.mid, hprop = max(Hprop, M#rep.hprop), proposer = max(Proposer, M#rep.proposer)},
-                            lists:foreach(fun(X) -> {listener, X} ! #result{mid = M#rep.mid, hprop = max(Hprop, M#rep.hprop), proposer = max(Proposer, M#rep.proposer)} end, lists:filter(fun(X) -> isNode(X) end, nodes())),
-                            deliverFun(dict:erase(M#rep.mid, Dicc));
-                        Hprop < M#rep.hprop ->
-                            deliverFun(dict:update(M#rep.mid, fun (_) -> [{M#rep.hprop, M#rep.proposer, Nrep + 1}] end, Dicc));
-                        Hprop == M#rep.hprop and (M#rep.proposer < Proposer) ->
-                            deliverFun(dict:update(M#rep.mid, fun (_) -> [{M#rep.hprop, M#rep.proposer, Nrep + 1}] end, Dicc));
+        #rep{mid = MsgId, hprop = NewHProp, proposer = NewProposer} ->
+            case dict:find(MsgId, Dict) of
+                {ok, [{OldHProp, OldProposer, Nrep}]} ->
+                    HProp = max(NewHProp, OldHProp),
+                    Proposer = getProp(NewHProp - OldHProp, NewProposer, OldProposer),
+                    Last = (Nrep + 1) == length(getNodes()),
+                    case Last of
                         true ->
-                            deliverFun(dict:update(M#rep.mid, fun (_) -> [{Hprop, Proposer, Nrep + 1}] end, Dicc))
+                            Res =  #result{mid = MsgId, hprop = HProp, proposer = Proposer},
+                            listener ! Res,
+                            sendMsg(getNodes(), Res),
+                            deliverFun(dict:erase(MsgId, Dict));
+                        false ->
+                            deliverFun(dict:update(MsgId, fun (_) -> [{HProp, Proposer, Nrep + 1}] end, Dict))
                     end;
                 error -> 
-                    deliverFun(dict:append(M#rep.mid, {M#rep.hprop, M#rep.proposer, 1}, Dicc))
+                    deliverFun(dict:append(MsgId, {NewHProp, NewProposer, 0}, Dict))
             end
     end.
-%% End of deliver section
-
 
 %% Beginning of listener section
 insertar([], Tupla) -> [Tupla];

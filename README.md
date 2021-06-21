@@ -20,6 +20,8 @@
  - Mejorar makefile
  - Mejorar protocolo de inicio
  - Borrar lo de isnode y ponerlo dentro de la funcion Node
+ - A veces crashea la creacion de nodos
+ - Guardar length(nodes()) como parametro
 
 ## Debugging
 Resultados de una prueba en 30 nodos, 12 hablantes, 10 mensajes c/u, total recibidos 120:
