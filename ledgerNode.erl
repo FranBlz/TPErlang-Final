@@ -4,18 +4,18 @@
 -export([senderFun/1, preListener/4, listenerFun/4, deliverFun/1, conectar/0, conectar/1]).
 -define(CREATE_MSG(Counter, Msg), #mcast{mid={node(), Counter + 1}, msg=Msg}).
 
--define(MAX_NODES, 6).
+-define(INIT_NODES, 6).
 
 isNode(NodeName) ->
     0 < string:str(atom_to_list(NodeName), "node").
 
-isLedger(NodeName) ->
-    0 < string:str(atom_to_list(NodeName), "ledger").
-
 getNodes() ->
     lists:filter(fun(Node) -> isNode(Node) end, nodes()).
 
-sendMsg(Nodes, Msg) ->
+getOthers() ->
+    lists:filter(fun(Node) -> not isNode(Node) end, nodes()).
+
+sendMsg(Msg, Nodes) ->
     lists:foreach(fun (Node) -> {listener, Node} ! Msg end, Nodes).
 
 start() ->
@@ -32,7 +32,7 @@ senderFun(Counter) ->
         M when is_record(M, send) ->
             Msg = ?CREATE_MSG(Counter, M#send.msg),
             listener ! Msg,
-            sendMsg(getNodes(), Msg),
+            sendMsg(Msg, getNodes()),
             senderFun(Counter + 1);
         rip ->
             fin;
@@ -62,7 +62,7 @@ deliverFun(Dict) ->
                         true ->
                             Res =  #result{mid = MsgId, hprop = HProp, proposer = Proposer},
                             listener ! Res,
-                            sendMsg(getNodes(), Res),
+                            sendMsg(Res, getNodes()),
                             deliverFun(dict:erase(MsgId, Dict));
                         false ->
                             deliverFun(dict:update(MsgId, fun (_) -> [{HProp, Proposer, Nrep + 1}] end, Dict))
@@ -90,43 +90,46 @@ preListener(S, Pend, Defin, TO) ->
     net_kernel:monitor_nodes(true),
     listenerFun(S, Pend, Defin, TO).
 
-listenerFun(S, Pend, Defin, TO) ->
+
+listenerFun(Proposal, Pend, Defin, TO) ->
     receive
         M when is_record(M, mcast) ->
             {Sender, _Counter} = M#mcast.mid,
-            {deliver, Sender} ! #rep{mid = M#mcast.mid, hprop = S + 1, proposer = node()},
-            listenerFun(S + 1, dict:append(M#mcast.mid, M#mcast.msg, Pend), Defin, infinity);
+            {deliver, Sender} ! #rep{mid = M#mcast.mid, hprop = Proposal + 1, proposer = node()},
+            listenerFun(
+                Proposal + 1,
+                dict:append(M#mcast.mid, M#mcast.msg, Pend),
+                Defin, infinity);
         M when is_record(M, result) ->
             {ok, [Msg]} = dict:find(M#result.mid, Pend),
-            listenerFun(max(S, M#result.hprop), dict:erase(M#result.mid, Pend), insertar(Defin, Msg), 0);
+            listenerFun(
+                max(Proposal, M#result.hprop), %Esto esta bien?
+                dict:erase(M#result.mid, Pend),
+                insertar(Defin, Msg), 0);  %Creo que no cambia si no estan ordenados
         {nodedown, Node} ->
-            io:format("Buenas~n"),
             case isNode(Node) of
                 true ->
-                    Total = 2*length(lists:filter(fun(X) -> isNode(X) end, nodes())),
-                    if
-                        Total =< ?MAX_NODES ->
+                    IsLessHalf = 2*length(getNodes()) =< ?INIT_NODES,
+                    case IsLessHalf of
+                        true ->
                             sender ! rip,
                             deliver ! rip,
-                            lists:foreach(fun(X) -> {listener, X} ! {serverdown} end, lists:filter(fun(X) -> isLedger(X) end, nodes())),
+                            sendMsg({serverdown}, getOthers()),
                             erlang:halt();
                         true ->
-                            lists:foreach(fun(X) -> {listener, X} ! {nodedown} end, lists:filter(fun(X) -> isLedger(X) end, nodes())),
-                            listenerFun(S, Pend, Defin, TO)
+                            sendMsg({nodedown}, getOthers()),
+                            listenerFun(Proposal, Pend, Defin, TO)
                     end;
                 false ->
-                    listenerFun(S, Pend, Defin, TO)
+                    listenerFun(Proposal, Pend, Defin, TO)
             end
     after TO ->
         case Defin of
-            [{get, Who, Counter} | Tl] ->
-                lists:foreach(fun(X) -> {listener, X} ! {getRes, Who, Counter} end, lists:filter(fun(X) -> isLedger(X) end, nodes())),
-                listenerFun(S, Pend, Tl, 0);
-            [{app, Who, Counter, Value} | Tl] ->
-                lists:foreach(fun(X) -> {listener, X} ! {appRes, Who, Counter, Value} end, lists:filter(fun(X) -> isLedger(X) end, nodes())),
-                listenerFun(S, Pend, Tl, 0);
+            [Msg|Tl] ->
+                sendMsg({res, Msg}, getOthers()),
+                listenerFun(Proposal, Pend, Tl, 0);
             [] ->
-                listenerFun(S, Pend, [], infinity)
+                listenerFun(Proposal, Pend, [], infinity)
         end
     end.
 %% End of listener section

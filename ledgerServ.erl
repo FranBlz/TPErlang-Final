@@ -21,7 +21,7 @@ listenerFun(Ledger, GetPend, AppPend) ->
         {app, Who, Counter, Value} ->
             lists:foreach(fun(X) -> {sender, X} ! #send{msg = {app, Who, Counter, Value}, sender = node()} end, lists:filter(fun(X) -> isNode(X) end, nodes())),
             listenerFun(Ledger, GetPend, [{Who, Counter} | AppPend]);
-        {getRes, Who, Counter} ->
+        {res, {get, Who, Counter}} ->
             IsMember = lists:member({Who, Counter}, GetPend),
             if
                 IsMember ->
@@ -30,7 +30,7 @@ listenerFun(Ledger, GetPend, AppPend) ->
                 true ->
                     listenerFun(Ledger, GetPend, AppPend)
             end;
-        {appRes, Who, Counter, Value} ->
+        {res, {app, Who, Counter, Value}} ->
             IsMember = lists:member({Who, Counter}, GetPend),
             if
                 IsMember ->
