@@ -1,7 +1,7 @@
 -module(ledgerNode).
 -include("struct.hrl").
 -export([start/0, stop/0]).
--export([senderFun/1, preListener/4, listenerFun/4, deliverFun/1, conectar/0, conectar/1]).
+-export([senderFun/1, preListener/0, listenerFun/4, deliverFun/1, conectar/0, conectar/1]).
 -define(CREATE_MSG(Counter, Msg), #mcast{mid={node(), Counter + 1}, msg=Msg}).
 
 -define(INIT_NODES, 6).
@@ -21,7 +21,7 @@ sendMsg(Msg, Nodes) ->
 start() ->
     register(sender, spawn(?MODULE, senderFun,[0])),
     register(deliver, spawn(?MODULE, deliverFun,[dict:new()])),
-    register(listener, spawn(?MODULE, preListener,[0, dict:new(), [], infinity])).
+    register(listener, spawn(?MODULE, preListener,[])).
 
 stop() ->
     fin.
@@ -88,10 +88,9 @@ insertar([CMsg | Tl], Msg) ->
             [CMsg|insertar(Tl, Msg)]
     end.
 
-preListener(S, Pend, Defin, TO) ->
+preListener() ->
     net_kernel:monitor_nodes(true),
-    listenerFun(S, Pend, Defin, TO).
-
+    listenerFun(0, dict:new(), [], infinity).
 
 listenerFun(Proposal, Pend, Defin, TO) ->
     receive

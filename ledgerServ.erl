@@ -3,53 +3,62 @@
 -export([start/0, preListener/0]).
 
 -define(MAX_NODES, 6).
-%% conectar cada servidor ledger a un nodo manualmente mediante hidden
+
 start() ->
     register(listener, spawn(?MODULE, preListener,[])).
 
 isNode(NodeName) ->
     0 < string:str(atom_to_list(NodeName), "node").
 
+getNodes() ->
+    lists:filter(fun(X) -> isNode(X) end, nodes()).
+
+getOthers() ->
+    lists:filter(fun(X) -> not isNode(X) end, nodes()).
+
+sendMsg(Msg, Nodes) ->
+    lists:foreach(fun(X) -> {sender, X} ! #send{msg = Msg, sender = node()} end, Nodes).
+
 preListener() ->
     net_kernel:monitor_nodes(true),
     listenerFun([], [], []).
 listenerFun(Ledger, GetPend, AppPend) ->
     receive
-        {get, Who, Counter} ->
-            lists:foreach(fun(X) -> {sender, X} ! #send{msg = {get, Who, Counter}, sender = node()} end, lists:filter(fun(X) -> isNode(X) end, nodes())),
-            listenerFun(Ledger, [{Who, Counter} | GetPend], AppPend);
-        {app, Who, Counter, Value} ->
-            lists:foreach(fun(X) -> {sender, X} ! #send{msg = {app, Who, Counter, Value}, sender = node()} end, lists:filter(fun(X) -> isNode(X) end, nodes())),
-            listenerFun(Ledger, GetPend, [{Who, Counter} | AppPend]);
-        {res, {get, Who, Counter}} ->
-            IsMember = lists:member({Who, Counter}, GetPend),
+        {get, Client, Counter} ->
+            sendMsg({get, Client, Counter}, getNodes()),
+            listenerFun(Ledger, [{Client, Counter} | GetPend], AppPend);
+        {app, Client, Counter, Value} ->
+            sendMsg({app, Client, Counter, Value}, getNodes()),
+            listenerFun(Ledger, GetPend, [{Client, Counter} | AppPend]);
+        {res, {get, Client, Counter}} ->
+            MyMsg = lists:member({Client, Counter}, GetPend),
             if
-                IsMember ->
-                    {listener, Who} ! {getRes, Counter, Ledger},
-                    listenerFun(Ledger, lists:delete({Who, Counter}, GetPend), AppPend);
+                MyMsg ->
+                    {listener, Client} ! {getRes, Counter, Ledger},
+                    listenerFun(Ledger, lists:delete({Client, Counter}, GetPend), AppPend);
                 true ->
                     listenerFun(Ledger, GetPend, AppPend)
             end;
-        {res, {app, Who, Counter, Value}} ->
-            IsMember = lists:member({Who, Counter}, GetPend),
+        {res, {app, Client, Counter, Value}} ->
+            MyMsg = lists:member({Client, Counter}, GetPend),
             if
-                IsMember ->
-                    listenerFun(Ledger ++ [Value], GetPend, lists:delete({Who, Counter}, AppPend));
+                MyMsg ->
+                    listenerFun(Ledger ++ [Value], GetPend, lists:delete({Client, Counter}, AppPend));
                 true ->
                     listenerFun(Ledger ++ [Value], GetPend, AppPend)
             end;
         {serverdown} ->
-            lists:foreach(fun(X) -> {listener, X} ! {rip} end, lists:filter(fun(X) -> not isNode(X) end, nodes())),
+            sendMsg({rip}, getOthers()),
             erlang:halt();
         {nodedown} ->
-            lists:foreach(fun(X) -> {listener, X} ! {nottrusty} end, lists:filter(fun(X) -> not isNode(X) end, nodes())),
+            sendMsg({nottrusty}, getOthers()),
             listenerFun(Ledger, GetPend, AppPend);
         {nodedown, Node} ->
             case isNode(Node) of
                 true ->
                     case reconnect(?MAX_NODES) of
                         serverdown -> 
-                            lists:foreach(fun(X) -> {listener, X} ! {rip} end, lists:filter(fun(X) -> not isNode(X) end, nodes()));
+                            sendMsg({rip}, getOthers());
                         done ->
                             listenerFun(Ledger, GetPend, AppPend)
                     end;
@@ -58,6 +67,7 @@ listenerFun(Ledger, GetPend, AppPend) ->
             end     
     end.
 
+%Que hacemos con esta funcion?
 reconnect(0) ->
     serverdown;
 reconnect(N) ->
