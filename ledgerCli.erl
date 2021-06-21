@@ -1,5 +1,5 @@
 -module(ledgerCli).
--export([start/0, getFun/0, appendFun/1, listenerFun/0, senderFun/1, preListener/0]).
+-export([start/0, get/0, append/1, listenerFun/0, senderFun/1, preListener/0]).
 
 start() ->
     register(sender, spawn(?MODULE, senderFun, [0])),
@@ -15,11 +15,13 @@ senderFun(C) ->
             senderFun(C + 1)
     end.
 
-getFun() ->
-    sender ! {get}.
+get() ->
+    sender ! {get},
+    ok.
 
-appendFun(Value) -> 
-    sender ! {append, Value}.
+append(Value) -> 
+    sender ! {append, Value},
+    ok.
 
 preListener() ->
     net_kernel:monitor_nodes(true),

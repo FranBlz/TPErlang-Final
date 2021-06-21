@@ -17,13 +17,10 @@
 - <mark>Problema actual:</mark> no es posible ejecutar una funcion en un nodo remoto, esto hace que se deba hacer node:start(). en cada terminal.
 
 ## TODO
- - Mejorar makefile
- - Mejorar protocolo de inicio
- - Borrar lo de isnode y ponerlo dentro de la funcion Node
- - A veces crashea la creacion de nodos
- - Guardar length(nodes()) como parametro
- - Si esta de mas lo de ordenar, se puede separar en su propio hilo
  - Agregar la deteccion de errores cuando los hilos fallan
+ - Informe
+ - Testing
+ - Implementar protocolo de inicio automático (opcional)
 
 ## Debugging
 Resultados de una prueba en 30 nodos, 12 hablantes, 10 mensajes c/u, total recibidos 120:

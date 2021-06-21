@@ -1,10 +1,8 @@
-'node'.
 'conectar'.
 'ledgerCli'.
-'ledgerNode'.
+'bcastNode'.
 'ledgerServ'.
-{'node',[load]}.
 {'conectar',[load]}.
 {'ledgerCli',[load]}.
-{'ledgerNode',[load]}.
+{'bcastNode',[load]}.
 {'ledgerServ',[load]}.

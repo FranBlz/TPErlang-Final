@@ -1,5 +1,5 @@
 %% Send information msg + sender
--record(send, {msg, sender}).
+-record(send, {msg}).
 
 %% Send initial mcast petition
 %% mid = {node, local_counter}

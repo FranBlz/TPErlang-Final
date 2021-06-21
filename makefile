@@ -25,7 +25,9 @@ allFran:
 	$(foreach val,$(NODOS),gnome-terminal -- erl -sname node$(val) -s ledgerNode start;)
 
 ledgerFran:
-	$(foreach val,$(NODOS),gnome-terminal -- erl -sname node$(val);)
+	gnome-terminal -- erl -make
+	sleep 2
+	$(foreach val,$(NODOS),gnome-terminal -- erl -sname node$(val) -s ledgerNode start;)
 	gnome-terminal -- erl -sname ledger1 -connect_all false -s ledgerServ start
 	gnome-terminal -- erl -sname ledger2 -connect_all false -s ledgerServ start
 	gnome-terminal -- erl -sname cliente1 -connect_all false -s ledgerCli start

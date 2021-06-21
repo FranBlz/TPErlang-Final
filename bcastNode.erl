@@ -1,13 +1,13 @@
--module(ledgerNode).
+-module(bcastNode).
 -include("struct.hrl").
--export([start/0, stop/0]).
--export([senderFun/1, preListener/0, listenerFun/4, deliverFun/1, conectar/0, conectar/1, generate/2]).
+-export([start/0, stop/0, pruebasFun/0]).
+-export([preMonitor/0, senderFun/1, preListener/0, listenerFun/4, deliverFun/1, conectar/0, conectar/1, generate/2]).
 -define(CREATE_MSG(Counter, Msg), #mcast{mid={node(), Counter + 1}, msg=Msg}).
 
 -define(INIT_NODES, 6).
 
 isNode(NodeName) ->
-    0 < string:str(atom_to_list(NodeName), "node").
+    0 < string:str(atom_to_list(NodeName), "atbcast").
 
 getNodes() ->
     lists:filter(fun(Node) -> isNode(Node) end, nodes()).
@@ -19,12 +19,30 @@ sendMsg(Msg, Nodes) ->
     lists:foreach(fun (Node) -> {listener, Node} ! Msg end, Nodes).
 
 start() ->
-    register(sender, spawn(?MODULE, senderFun,[0])),
-    register(deliver, spawn(?MODULE, deliverFun,[dict:new()])),
-    register(listener, spawn(?MODULE, preListener,[])).
+    register(monitor, spawn(?MODULE, preMonitor,[])).
+
+preMonitor() ->
+    register(sender, spawn_link(?MODULE, senderFun,[0])),
+    register(deliver, spawn_link(?MODULE, deliverFun,[dict:new()])),
+    register(listener, spawn_link(?MODULE, preListener,[])),
+    register(pruebas, spawn_link(?MODULE, pruebasFun,[])),
+    monitorFun().
+monitorFun() ->
+    receive
+        {'ERROR', _SenderID, _Reason} ->
+            io:format("Lo catcheamos pa~n")
+    end.
 
 stop() ->
     fin.
+
+pruebasFun() ->
+    receive
+        A -> 
+            case is_record(A, send) of
+                true -> xd
+            end
+    end.
 
 %% Beginning of sender section
 senderFun(Counter) ->
@@ -34,7 +52,7 @@ senderFun(Counter) ->
             listener ! Msg,
             sendMsg(Msg, getNodes()),
             senderFun(Counter + 1);
-        {rip} -> %Deberia ir entre llaves
+        {rip} -> 
             fin;
         _ ->
             io:format("Invalid msg ~n"),
@@ -113,6 +131,7 @@ listenerFun(Proposal, Pend, Defin, TO) ->
                 max(Proposal, M#result.hprop),
                 dict:erase(M#result.mid, Pend),
                 insertar(Defin, Msg), NewTO);
+                % insertar(Defin, {Msg, M#result.proposer}), NewTO);
         {nodedown, Node} ->
             case isNode(Node) of
                 true ->
@@ -133,6 +152,8 @@ listenerFun(Proposal, Pend, Defin, TO) ->
     after TO ->
         case Defin of
             [Msg|Tl] ->
+                %{Mens, Prop} = Msg,
+                %io:format("~p ~p ~n", [Mens, Prop]),
                 sendMsg({res, Msg}, getOthers()),
                 listenerFun(Proposal, Pend, Tl, 0);
             [] ->
@@ -144,7 +165,7 @@ listenerFun(Proposal, Pend, Defin, TO) ->
 generate(_TO, 0) -> finished;
 generate(TO, N) ->
     timer:sleep(TO),
-    sender ! #send{msg = TO, sender = node()},
+    sender ! #send{msg = TO},
     generate(round(rand:uniform()*10000), N - 1).
 
 conectar(0) ->
