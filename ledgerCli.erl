@@ -35,11 +35,11 @@ listenerFun() ->
             io:format("~p ~p ~n", [Counter, Ledger]),
             listenerFun();
         {nodedown, _Node} ->
-            io:format("Ocurrio un error en el servidor ledger~n"),
+            io:format("Cayó el servidor ledger~n"),
             listenerFun();
         {rip} ->
-            io:format("Ocurrio un error en el servicio bcast~n");
+            io:format("Cayó el servicio bcast~n");
         {nottrusty} ->
-            io:format("El servicio bcast ya no es confiable~n"),
+            io:format("Cayó un nodo del servicio broadcast~n"),
             listenerFun()
     end.

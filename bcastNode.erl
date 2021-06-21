@@ -3,7 +3,7 @@
 -export([start/0, stop/0, connect/2]).
 -export([preMonitor/0, senderFun/1, preListener/0, deliverFun/1, generate/2]).
 
--define(INIT_NODES, 6).
+-define(INIT_NODES, 4).
 -define(CREATE_MSG(Counter, Msg), #mcast{mid={node(), Counter + 1}, msg=Msg}).
 
 %% Beginning of aux section
@@ -43,7 +43,8 @@ start() ->
 
 % Stops the processes in current node by signaling monitor to start exit protocol
 stop() ->
-    monitor ! {'EXIT', self(), 0}.
+    disconnect(),
+    monitor ! {rip}.
 
 %% Beginning of monitor functions
 % Spawns necessary processes, handles closing protocol in case of process failure
@@ -58,7 +59,10 @@ monitorFun() ->
         {'EXIT', _Pid, _Ra} ->
             List = lists:delete(undefined, [whereis(sender),whereis(deliver),whereis(listener)]),
             lists:foreach(fun(X) -> X ! {rip} end, List),
-            disconnect(),
+            erlang:halt();
+        {rip} ->
+            List = lists:delete(undefined, [whereis(sender),whereis(deliver),whereis(listener)]),
+            lists:foreach(fun(X) -> X ! {rip} end, List),
             exit(normal)
     end.
 

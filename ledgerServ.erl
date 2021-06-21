@@ -2,7 +2,7 @@
 -include("struct.hrl").
 -export([start/0, preListener/0]).
 
--define(MAX_NODES, 6).
+-define(INIT_NODES, 4).
 
 % Starts necesarry processes for ledger server
 start() ->
@@ -16,9 +16,16 @@ getNodes() ->
 getOthers() ->
     lists:filter(fun(X) -> not isNode(X) end, nodes()).
 
+% Disconnects current nodes
+disconnect() ->
+    lists:foreach(fun (Node) -> erlang:disconnect_node(Node) end, nodes()).
+
 % Auxiliary function for sending messages
 sendMsg(Msg, Nodes) ->
     lists:foreach(fun(X) -> {sender, X} ! #send{msg = Msg} end, Nodes).
+
+send2Client(Msg, Nodes) ->
+    lists:foreach(fun(X) -> {listener, X} ! Msg end, Nodes).
 
 % Listener process: handles requests from client and responses from bcast net
 % In the case of bcast net responses (marked by res) it is determined first if said
@@ -55,18 +62,20 @@ listenerFun(Ledger, GetPend, AppPend) ->
                     listenerFun(Ledger ++ [Value], GetPend, AppPend)
             end;
         {serverdown} ->
-            sendMsg({rip}, getOthers()),
-            erlang:halt();
+            send2Client({rip}, getOthers()),
+            disconnect();
         {nodedown} ->
-            sendMsg({nottrusty}, getOthers()),
+            send2Client({nottrusty}, getOthers()),
             listenerFun(Ledger, GetPend, AppPend);
         {nodedown, Node} ->
             case isNode(Node) of
                 true ->
-                    case reconnect(?MAX_NODES, list_to_atom(string:find(atom_to_list(Node), "@"))) of
+                    case reconnect(?INIT_NODES, list_to_atom(string:find(atom_to_list(Node), "@"))) of
                         serverdown -> 
-                            sendMsg({rip}, getOthers());
+                            send2Client({rip}, getOthers()),
+                            disconnect();
                         done ->
+                            send2Client({nottrusty}, getOthers()),
                             listenerFun(Ledger, GetPend, AppPend)
                     end;
                 false ->
