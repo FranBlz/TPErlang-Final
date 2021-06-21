@@ -1,37 +1,28 @@
-NODOS = 1 2 3 4 5 6
+CANT_ATNODOS = 6
+CANT_LEDGER_SERV = 2
+CANT_LEDGERS_CLI = 2
+TERMINAL = gnome-terminal
+FLAG_EXEC = --
 
-all: atbroadcast ledger
+all: compile atbroadcast ledgerserv ledgercli
 
-ledger:
-	konsole -e erl -sname ledger1 -connect_all false -s ledgerServ start &
-	konsole -e erl -sname ledger2 -connect_all false -s ledgerServ start &
-	konsole -e erl -sname cliente1 -connect_all false -s ledgerCli start &
-	konsole -e erl -sname cliente2 -connect_all false -s ledgerCli start &
+compile:
+	erl -make
+
+ledgerserv:
+	for i in $$(seq 1 1 $(CANT_LEDGER_SERV)); do \
+		$(TERMINAL) $(FLAG_EXEC) erl -sname ledger$$i -connect_all false -s ledgerServ start & \
+	done
+
+ledgercli:
+	for i in $$(seq 1 1 $(CANT_LEDGERS_CLI)); do \
+		$(TERMINAL) $(FLAG_EXEC) erl -sname cliente$$i -connect_all false -s ledgerCli start & \
+	done
 
 atbroadcast:
-	konsole -e erl -sname node1 -make &
-	konsole -e erl -sname node2 -s ledgerNode start &
-	konsole -e erl -sname node3 -s ledgerNode start &
-	konsole -e erl -sname node4 -s ledgerNode start &
-	konsole -e erl -sname node5 -s ledgerNode start &
+	for i in $$(seq 1 1 $(CANT_ATNODOS)); do \
+		$(TERMINAL) $(FLAG_EXEC) erl -sname atnode$$i -s bcastNode start & \
+	done
 
 clean:
 	rm *.beam
-	rm ./res/*
-
-allFran:
-	gnome-terminal -- erl -make
-	sleep 3
-	$(foreach val,$(NODOS),gnome-terminal -- erl -sname node$(val) -s ledgerNode start;)
-
-ledgerFran:
-	gnome-terminal -- erl -make
-	sleep 2
-	$(foreach val,$(NODOS),gnome-terminal -- erl -sname node$(val) -s ledgerNode start;)
-	gnome-terminal -- erl -sname ledger1 -connect_all false -s ledgerServ start
-	gnome-terminal -- erl -sname ledger2 -connect_all false -s ledgerServ start
-	gnome-terminal -- erl -sname cliente1 -connect_all false -s ledgerCli start
-	gnome-terminal -- erl -sname cliente2 -connect_all false -s ledgerCli start
-
-resultsFran:
-	$(foreach val,$(NODOS),gnome-terminal --working-directory=/home/francisco/Desktop/TPErlang-General/TPErlang-Final/ -x bash -c "erl -sname node$(val) | tee ./res/salida$(val).txt; bash";)

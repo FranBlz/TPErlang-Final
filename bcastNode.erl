@@ -1,45 +1,74 @@
 -module(bcastNode).
 -include("struct.hrl").
--export([start/0, stop/0]).
--export([preMonitor/0, senderFun/1, preListener/0, listenerFun/4, deliverFun/1, conectar/0, conectar/1, generate/2]).
--define(CREATE_MSG(Counter, Msg), #mcast{mid={node(), Counter + 1}, msg=Msg}).
+-export([start/0, stop/0, connect/2]).
+-export([preMonitor/0, senderFun/1, preListener/0, deliverFun/1, generate/2]).
 
 -define(INIT_NODES, 6).
+-define(CREATE_MSG(Counter, Msg), #mcast{mid={node(), Counter + 1}, msg=Msg}).
 
+%% Beginning of aux section
+% Returns true if given name corresponds to a node of bcast
 isNode(NodeName) ->
-    0 < string:str(atom_to_list(NodeName), "atbcast").
+    0 < string:str(atom_to_list(NodeName), "atnode").
 
+% Returns a list of valid bcastnode names
 getNodes() ->
     lists:filter(fun(Node) -> isNode(Node) end, nodes()).
 
+% Returns a list of nodes other than bcastnodes
 getOthers() ->
     lists:filter(fun(Node) -> not isNode(Node) end, nodes()).
 
-sendMsg(Msg, Nodes) ->
-    lists:foreach(fun (Node) -> {listener, Node} ! Msg end, Nodes).
+% Connects current bcastnode to other bcastnodes available with matching prefix (given as atom)
+connect(0, _Prefix) -> done;
+connect(N, Prefix) ->
+    net_kernel:connect_node(list_to_atom(lists:concat([atnode,N,Prefix]))),
+    connect(N - 1, Prefix).
 
+% Disconnects current nodes
 disconnect() ->
     lists:foreach(fun (Node) -> erlang:disconnect_node(Node) end, nodes()).
 
+% Debugging function used to simulate random message behaviour
+generate(_TO, 0) -> finished;
+generate(TO, N) ->
+    timer:sleep(TO),
+    sender ! #send{msg = TO},
+    generate(round(rand:uniform()*10000), N - 1).
+
+%% Beginning of terminal functions
+% Starts monitor process in current node
 start() ->
     register(monitor, spawn(?MODULE, preMonitor,[])).
 
+% Stops the processes in current node by signaling monitor to start exit protocol
+stop() ->
+    monitor ! {'EXIT', self(), 0}.
+
+%% Beginning of monitor functions
+% Spawns necessary processes, handles closing protocol in case of process failure
 preMonitor() ->
+    process_flag(trap_exit, true),
     register(sender, spawn_link(?MODULE, senderFun,[0])),
     register(deliver, spawn_link(?MODULE, deliverFun,[dict:new()])),
     register(listener, spawn_link(?MODULE, preListener,[])),
     monitorFun().
 monitorFun() ->
     receive
-        {rip} ->
-            io:format("Shutting down~n")
+        {'EXIT', _Pid, _Ra} ->
+            List = lists:delete(undefined, [whereis(sender),whereis(deliver),whereis(listener)]),
+            lists:foreach(fun(X) -> X ! {rip} end, List),
+            disconnect(),
+            exit(normal)
     end.
 
-stop() ->
-    disconnect(),
-    monitor ! {rip}.
+%% Beginning of sender functions
+% Sends a message to listener process of all given nodes
+sendMsg(Msg, Nodes) ->
+    lists:foreach(fun (Node) -> {listener, Node} ! Msg end, Nodes).
 
-%% Beginning of sender section
+% Sender process: receives messages from outside the bcast net and sends them to all connected bcastnodes
+% creates the MID(message identifier, composed of current node and counter) for given message
 senderFun(Counter) ->
     receive
         M when is_record(M, send) ->
@@ -48,23 +77,25 @@ senderFun(Counter) ->
             sendMsg(Msg, getNodes()),
             senderFun(Counter + 1);
         {rip} -> 
-            fin;
+            exit(normal);
         _ ->
             io:format("Invalid msg ~n"),
             senderFun(Counter)
     end.
-%% End of sender section
 
+%% Beginning of deliver functions
+% Auxiliary function to determine proposer of universal stamp
 getProp(0, New, Old) -> max(New, Old);
 getProp(Rest, New, _Old) when Rest > 0 -> New;
 getProp(_Rest, _New, Old) -> Old.
 
-% %% Mid #{Hprop, Proposer, Nrep}
-% %% Mid = {node, sn}
+% Deliver process: handles the responses from bcastnodes during a stamp selection
+% Compares stamp values and proposers to determine the highest stamp, finally sends said stamp
+% as definitive(Universal) to all other bcastnodes. Can handle multiple stamp selections at the same time.
 deliverFun(Dict) ->
     receive
         {rip} ->
-            fin;
+            exit(normal);
         #rep{mid = MsgId, hprop = NewHProp, proposer = NewProposer} ->
             case dict:find(MsgId, Dict) of
                 {ok, [{OldHProp, OldProposer, Nrep}]} ->
@@ -85,28 +116,40 @@ deliverFun(Dict) ->
             end
     end.
 
+%% Beginning of listener section
+% Auxiliary function to use as preposition on sortedInsertion
 propBigger({CNum, CProp, _}, {Num, Prop, _}) ->
     if
         CNum == Num -> CProp > Prop;
         true -> CNum > Num
     end.
 
-%% Beginning of listener section
-insertar([], Record) -> [Record];
-insertar([CMsg | Tl], Msg) ->
+% Auxiliary function to insert items in a sorted list
+sortedInsertion([], Record) -> [Record];
+sortedInsertion([CMsg | Tl], Msg) ->
     case propBigger(CMsg, Msg) of
         true ->
             [Msg | [CMsg | Tl]];
         false ->
-            [CMsg|insertar(Tl, Msg)]
+            [CMsg|sortedInsertion(Tl, Msg)]
     end.
 
+% Listener process:
+% Responds to stamp requests and sends results as well as monitoring the other bcast nodes
+% In case of stamp request responds with highest local stamp and adds received message to pending dictionary
+% In case of result removes result msg from pending dictionary and adds it to definitive sorted list
+% In case of nodedown notifies connected external nodes (not bcastnodes) that a node is down,
+% if half of the initial ammount of nodes crashes then the service is deemed possibly inconsistent
+% and shut-down (locally by each node)
+% If there are messages in def list and no messages in pending then broadcasts def messages to all
+% connected non-bcast nodes
 preListener() ->
     net_kernel:monitor_nodes(true),
     listenerFun(0, dict:new(), [], infinity).
-
 listenerFun(Proposal, Pend, Defin, TO) ->
     receive
+        {rip} ->
+            exit(normal);
         M when is_record(M, mcast) ->
             {Sender, _Counter} = M#mcast.mid,
             {deliver, Sender} ! #rep{mid = M#mcast.mid, hprop = Proposal + 1, proposer = node()},
@@ -125,19 +168,19 @@ listenerFun(Proposal, Pend, Defin, TO) ->
             listenerFun(
                 max(Proposal, M#result.hprop),
                 dict:erase(M#result.mid, Pend),
-                insertar(Defin, Msg), NewTO);
-                % insertar(Defin, {Msg, M#result.proposer}), NewTO);
+                sortedInsertion(Defin, Msg), NewTO);
+                % sortedInsertion(Defin, {Msg, M#result.proposer}), NewTO);
         {nodedown, Node} ->
             case isNode(Node) of
                 true ->
-                    IsLessHalf = 2*length(getNodes()) =< ?INIT_NODES,
+                    IsLessHalf = 2*(length(getNodes())+1) =< ?INIT_NODES,
                     case IsLessHalf of
                         true ->
-                            sender ! {rip},
-                            deliver ! {rip},
+                            %io:format("Net down~n"),
                             sendMsg({serverdown}, getOthers()),
-                            disconnect();
+                            exit(down);
                         false ->
+                            %io:format("Node down~n"),
                             sendMsg({nodedown}, getOthers()),
                             listenerFun(Proposal, Pend, Defin, TO)
                     end;
@@ -155,18 +198,3 @@ listenerFun(Proposal, Pend, Defin, TO) ->
                 listenerFun(Proposal, Pend, [], infinity)
         end
     end.
-%% End of listener section
-
-generate(_TO, 0) -> finished;
-generate(TO, N) ->
-    timer:sleep(TO),
-    sender ! #send{msg = TO},
-    generate(round(rand:uniform()*10000), N - 1).
-
-conectar(0) ->
-    listo;
-conectar(N) ->
-    net_adm:ping(list_to_atom("node" ++ [49+N] ++ "@dani-pc")),
-    conectar(N-1).
-conectar() ->
-    conectar(6).

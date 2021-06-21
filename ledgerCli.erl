@@ -1,10 +1,12 @@
 -module(ledgerCli).
--export([start/0, get/0, append/1, listenerFun/0, senderFun/1, preListener/0]).
+-export([start/0, get/0, append/1, senderFun/1, preListener/0]).
 
+% Starts necessary processes for client
 start() ->
     register(sender, spawn(?MODULE, senderFun, [0])),
     register(listener, spawn(?MODULE, preListener,[])).
 
+% Handles requests from user and delivers them to the connected ledger server
 senderFun(C) ->
     receive
         {get} ->
@@ -15,14 +17,15 @@ senderFun(C) ->
             senderFun(C + 1)
     end.
 
+% User functions for showing and adding elements to the ledger
 get() ->
     sender ! {get},
     ok.
-
 append(Value) -> 
     sender ! {append, Value},
     ok.
 
+% Handles results coming from ledger server and notifies the user necesarry information about the service
 preListener() ->
     net_kernel:monitor_nodes(true),
     listenerFun().

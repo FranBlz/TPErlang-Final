@@ -4,21 +4,28 @@
 
 -define(MAX_NODES, 6).
 
+% Starts necesarry processes for ledger server
 start() ->
     register(listener, spawn(?MODULE, preListener,[])).
 
+% Auxiliary functions (same as in bcastNode)
 isNode(NodeName) ->
-    0 < string:str(atom_to_list(NodeName), "atbcast").
-
+    0 < string:str(atom_to_list(NodeName), "atnode").
 getNodes() ->
     lists:filter(fun(X) -> isNode(X) end, nodes()).
-
 getOthers() ->
     lists:filter(fun(X) -> not isNode(X) end, nodes()).
 
+% Auxiliary function for sending messages
 sendMsg(Msg, Nodes) ->
     lists:foreach(fun(X) -> {sender, X} ! #send{msg = Msg} end, Nodes).
 
+% Listener process: handles requests from client and responses from bcast net
+% In the case of bcast net responses (marked by res) it is determined first if said
+% response corresponds to a query made locally, for this a record of local queries made by
+% each client is kept.
+% In case of problems with the atomic bcast service the connected clients are notified and
+% the server attempts to reconnect to the service when possible
 preListener() ->
     net_kernel:monitor_nodes(true),
     listenerFun([], [], []).
@@ -67,10 +74,11 @@ listenerFun(Ledger, GetPend, AppPend) ->
             end     
     end.
 
+% Auxiliary function used to reconnect the ledger server to any available bcast node
 reconnect(0, _Sufix) ->
     serverdown;
 reconnect(N, Sufix) ->
-    case net_kernel:connect_node(list_to_atom(lists:concat([node,N,Sufix]))) of
+    case net_kernel:connect_node(list_to_atom(lists:concat([atnode,N,Sufix]))) of
         true -> 
             done;
         false ->
