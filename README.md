@@ -16,6 +16,10 @@
 - Modulo make de Erlang (https://erlang.org/doc/man/make.html)
 - <mark>Problema actual:</mark> no es posible ejecutar una funcion en un nodo remoto, esto hace que se deba hacer node:start(). en cada terminal.
 
+## TODO
+ - Mejorar makefile
+ - Mejorar protocolo de inicio
+ - Borrar lo de isnode y ponerlo dentro de la funcion Node
 
 ## Debugging
 Resultados de una prueba en 30 nodos, 12 hablantes, 10 mensajes c/u, total recibidos 120:

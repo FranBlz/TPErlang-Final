@@ -1,7 +1,8 @@
 -module(ledgerNode).
 -include("struct.hrl").
 -export([start/0, stop/0]).
--export([senderFun/1, preListener/4, listenerFun/4, deliverFun/1]).
+-export([senderFun/1, preListener/4, listenerFun/4, deliverFun/1, conectar/0, conectar/1]).
+-define(CREATE_MSG(Counter, Msg), #mcast{mid={node(), Counter + 1}, msg=Msg}).
 
 -define(MAX_NODES, 6).
 
@@ -10,6 +11,9 @@ isNode(NodeName) ->
 
 isLedger(NodeName) ->
     0 < string:str(atom_to_list(NodeName), "ledger").
+
+getNodes() ->
+    lists:filter(fun(Node) -> isNode(Node) end, nodes()).
 
 start() ->
     register(sender, spawn(?MODULE, senderFun,[0])),
@@ -23,8 +27,9 @@ stop() ->
 senderFun(Counter) ->
     receive
         M when is_record(M, send) ->
-            listener ! #mcast{mid = {node(), Counter + 1}, msg = M#send.msg},
-            lists:foreach(fun(X) -> {listener, X} ! #mcast{mid = {node(), Counter + 1}, msg = M#send.msg} end, lists:filter(fun(X) -> isNode(X) end, nodes())),
+            Msg = ?CREATE_MSG(Counter, M#send.msg),
+            listener ! Msg,
+            lists:foreach(fun(Node) -> {listener, Node} ! Msg end, getNodes()),
             senderFun(Counter + 1);
         rip ->
             fin;
@@ -33,12 +38,6 @@ senderFun(Counter) ->
             senderFun(Counter)
     end.
 %% End of sender section
-
-%% Beginning of deliver section
-maximum(V1, V2) when V1 >= V2 ->
-    V1;
-maximum(_V1, V2) ->
-    V2.
 
 %% Mid #{Hprop, Proposer, Nrep}
 %% Mid = {node, sn}
@@ -52,8 +51,8 @@ deliverFun(Dicc) ->
                     Total = length(nodes()),
                     if
                         Nrep + 1 == Total ->
-                            listener ! #result{mid = M#rep.mid, hprop = maximum(Hprop, M#rep.hprop), proposer = maximum(Proposer, M#rep.proposer)},
-                            lists:foreach(fun(X) -> {listener, X} ! #result{mid = M#rep.mid, hprop = maximum(Hprop, M#rep.hprop), proposer = maximum(Proposer, M#rep.proposer)} end, lists:filter(fun(X) -> isNode(X) end, nodes())),
+                            listener ! #result{mid = M#rep.mid, hprop = max(Hprop, M#rep.hprop), proposer = max(Proposer, M#rep.proposer)},
+                            lists:foreach(fun(X) -> {listener, X} ! #result{mid = M#rep.mid, hprop = max(Hprop, M#rep.hprop), proposer = max(Proposer, M#rep.proposer)} end, lists:filter(fun(X) -> isNode(X) end, nodes())),
                             deliverFun(dict:erase(M#rep.mid, Dicc));
                         Hprop < M#rep.hprop ->
                             deliverFun(dict:update(M#rep.mid, fun (_) -> [{M#rep.hprop, M#rep.proposer, Nrep + 1}] end, Dicc));
@@ -95,7 +94,7 @@ listenerFun(S, Pend, Defin, TO) ->
             listenerFun(S + 1, dict:append(M#mcast.mid, M#mcast.msg, Pend), Defin, infinity);
         M when is_record(M, result) ->
             {ok, [Msg]} = dict:find(M#result.mid, Pend),
-            listenerFun(maximum(S, M#result.hprop), dict:erase(M#result.mid, Pend), insertar(Defin, Msg), 0);
+            listenerFun(max(S, M#result.hprop), dict:erase(M#result.mid, Pend), insertar(Defin, Msg), 0);
         {nodedown, Node} ->
             io:format("Buenas~n"),
             case isNode(Node) of
@@ -127,3 +126,12 @@ listenerFun(S, Pend, Defin, TO) ->
         end
     end.
 %% End of listener section
+
+
+conectar(0) ->
+    listo;
+conectar(N) ->
+    net_adm:ping(list_to_atom("node" ++ [49+N] ++ "@dani-pc")),
+    conectar(N-1).
+conectar() ->
+    conectar(6).
