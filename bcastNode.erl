@@ -1,6 +1,6 @@
 -module(bcastNode).
 -include("struct.hrl").
--export([start/0, stop/0, pruebasFun/0]).
+-export([start/0, stop/0]).
 -export([preMonitor/0, senderFun/1, preListener/0, listenerFun/4, deliverFun/1, conectar/0, conectar/1, generate/2]).
 -define(CREATE_MSG(Counter, Msg), #mcast{mid={node(), Counter + 1}, msg=Msg}).
 
@@ -18,6 +18,9 @@ getOthers() ->
 sendMsg(Msg, Nodes) ->
     lists:foreach(fun (Node) -> {listener, Node} ! Msg end, Nodes).
 
+disconnect() ->
+    lists:foreach(fun (Node) -> erlang:disconnect_node(Node) end, nodes()).
+
 start() ->
     register(monitor, spawn(?MODULE, preMonitor,[])).
 
@@ -25,24 +28,16 @@ preMonitor() ->
     register(sender, spawn_link(?MODULE, senderFun,[0])),
     register(deliver, spawn_link(?MODULE, deliverFun,[dict:new()])),
     register(listener, spawn_link(?MODULE, preListener,[])),
-    register(pruebas, spawn_link(?MODULE, pruebasFun,[])),
     monitorFun().
 monitorFun() ->
     receive
-        {'ERROR', _SenderID, _Reason} ->
-            io:format("Lo catcheamos pa~n")
+        {rip} ->
+            io:format("Shutting down~n")
     end.
 
 stop() ->
-    fin.
-
-pruebasFun() ->
-    receive
-        A -> 
-            case is_record(A, send) of
-                true -> xd
-            end
-    end.
+    disconnect(),
+    monitor ! {rip}.
 
 %% Beginning of sender section
 senderFun(Counter) ->
@@ -141,7 +136,7 @@ listenerFun(Proposal, Pend, Defin, TO) ->
                             sender ! {rip},
                             deliver ! {rip},
                             sendMsg({serverdown}, getOthers()),
-                            erlang:halt();
+                            disconnect();
                         false ->
                             sendMsg({nodedown}, getOthers()),
                             listenerFun(Proposal, Pend, Defin, TO)
