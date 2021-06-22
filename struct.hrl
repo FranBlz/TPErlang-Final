@@ -1,8 +1,12 @@
 %% Send information msg + sender
--record(send, {msg, sender}).
+-record(send, {msg}).
 
-%% Msg info Msg x Sender x Seq Num
--record(msg, {msg, sender, sn}).
+%% Send initial mcast petition
+%% mid = {node, local_counter}
+-record(mcast, {mid, msg}).
 
-%% Proposal for Seq Num
--record(prop, {sender, sn})
+%% Result of mcast petition
+-record(result, {mid, hprop, proposer}).
+
+%% Response for mcast petition
+-record(rep, {mid, hprop, proposer}).
