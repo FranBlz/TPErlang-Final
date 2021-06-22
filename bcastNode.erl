@@ -173,7 +173,6 @@ listenerFun(Proposal, Pend, Defin, TO) ->
                 max(Proposal, M#result.hprop),
                 dict:erase(M#result.mid, Pend),
                 sortedInsertion(Defin, {M#result.hprop, M#result.proposer, Msg}), NewTO);
-                % sortedInsertion(Defin, {Msg, M#result.proposer}), NewTO);
         {nodedown, Node} ->
             case isNode(Node) of
                 true ->
@@ -194,8 +193,7 @@ listenerFun(Proposal, Pend, Defin, TO) ->
     after TO ->
         case Defin of
             [{_Hprop, _Prop, Msg}|Tl] ->
-                %{Mens, Prop} = Msg,
-                %io:format("~p ~p ~n", [Mens, Prop]),
+                %io:format("~p ~p ~p~n", [_Hprop, _Prop, Msg]),
                 sendMsg({res, Msg}, getOthers()),
                 listenerFun(Proposal, Pend, Tl, 0);
             [] ->
